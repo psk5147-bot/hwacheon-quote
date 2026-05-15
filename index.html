@@ -951,7 +951,6 @@ function loadDraft(){
 }
 function setBadge(m){document.getElementById('autosave-badge').textContent='● '+m;}
 function newDoc(){
-  if(!confirm('새 문서를 작성합니다. 현재 내용은 자동저장됩니다.'))return;
   autoSave();items=[];docId=null;
   ['c-company','c-person','c-tel','c-addr','q-manager-custom',
    'r-delivery-days','r-delivery-extra','r-payment','r-note'].forEach(id=>document.getElementById(id).value='');
