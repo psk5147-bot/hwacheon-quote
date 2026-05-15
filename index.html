@@ -56,7 +56,7 @@
 
   onAuthStateChanged(auth2, async (user) => {
     if(user){
-      // 이미 로그인된 상태 → 바로 메인 앱 표시
+      // 이미 로그인된 상태 → 바로 메인 앱 표시 (로그인 화면 없이)
       document.getElementById('login-screen').style.display='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent = user.email;
@@ -74,6 +74,18 @@
         snap2.forEach(d => { custs.push(d.data()); });
         localStorage.setItem('htc_custs', JSON.stringify(custs));
       }catch(e){ console.log('거래처 로드 실패', e); }
+      // 임시저장 있으면 선택, 없으면 새 문서
+      const draft=localStorage.getItem('htc_draft');
+      if(draft){
+        if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
+          if(typeof loadDraft==='function') loadDraft();
+        }else{
+          localStorage.removeItem('htc_draft');
+          if(typeof newDoc==='function') newDoc();
+        }
+      }else{
+        if(typeof newDoc==='function') newDoc();
+      }
     }
   });
 </script>
@@ -1275,9 +1287,20 @@ function doLogin(){
       document.getElementById('login-screen').style.display='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent=uc.user.email;
-      loadDraft();
       loadFirestoreDocs();
       loadFirestoreCusts();
+      // 임시저장 있으면 선택 팝업
+      const draft=localStorage.getItem('htc_draft');
+      if(draft){
+        if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
+          loadDraft();
+        }else{
+          localStorage.removeItem('htc_draft');
+          newDoc();
+        }
+      }else{
+        newDoc();
+      }
     })
     .catch(e=>{
       err.textContent='이메일 또는 비밀번호가 올바르지 않습니다.';
