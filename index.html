@@ -1410,8 +1410,8 @@ function sendEmail(){
     company:d.company,
     doc_no:d.docNo,
     doc_date:d.date,
-    total:comma(total)+' 원',
-    manager:d.manager,
+    total:comma(total),
+    manager:isGwajang?'문상록 과장':'문형록 대표',
     manager_mobile:mobile,
     message:`안녕하세요, ${d.person||d.company}님.\n\n화천이티씨에서 요청하신 견적서를 발송드립니다.\n\n■ 문서번호: ${d.docNo}\n■ 견적일자: ${d.date}\n■ 합계금액: ${comma(total)} 원\n\n견적 내용 확인 후 문의사항은 아래로 연락 부탁드립니다.\n\nTEL: 041-552-5147\n담당자: ${d.manager} (${mobile})\nE-mail: mohoro@naver.com\n\n감사합니다.\n화천이티씨 드림`,
   };
