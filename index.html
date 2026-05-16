@@ -1686,16 +1686,28 @@ async function sendEmail(){
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
     const printArea = document.getElementById('print-area');
-    // 모바일에서도 A4 너비로 강제 고정
+    // 모바일 CSS 무력화 - 데스크탑과 동일하게 고정
     const prevTransform = printArea.style.transform;
     const prevWidth = printArea.style.width;
+    const styleOverride = document.createElement('style');
+    styleOverride.id = 'pdf-capture-override';
+    styleOverride.textContent = `
+      #print-area, #print-area * {
+        font-size: revert !important;
+        line-height: revert !important;
+        letter-spacing: revert !important;
+      }
+      #print-area { width: 794px !important; font-family: '맑은 고딕','Malgun Gothic',sans-serif !important; font-size: 9pt !important; }
+    `;
+    document.head.appendChild(styleOverride);
     printArea.style.transform = 'none';
     printArea.style.width = '794px';
-    await new Promise(r=>setTimeout(r,200));
+    await new Promise(r=>setTimeout(r,300));
     const canvas = await html2canvas(printArea, {scale:3, useCORS:true, allowTaint:true, imageTimeout:0, backgroundColor:'#ffffff', windowWidth:794, width:794});
     // 원복
     printArea.style.transform = prevTransform;
     printArea.style.width = prevWidth;
+    document.getElementById('pdf-capture-override')?.remove();
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF('p','mm','a4');
     const pageW = pdf.internal.pageSize.getWidth();
