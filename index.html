@@ -1432,7 +1432,7 @@ async function sendEmail(){
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
     const printArea = document.getElementById('print-area');
-    const canvas = await html2canvas(printArea, {scale:2, useCORS:true, backgroundColor:'#ffffff'});
+    const canvas = await html2canvas(printArea, {scale:1.8, useCORS:true, backgroundColor:'#ffffff', windowWidth:794});
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF('p','mm','a4');
     const pageW = pdf.internal.pageSize.getWidth();
