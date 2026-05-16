@@ -89,6 +89,9 @@
           }
         });
       }catch(e){ console.log('거래처 리스너 실패', e); }
+    }else{
+      // 비로그인 → 로그인 화면 표시
+      document.getElementById('login-screen').style.display='flex';
     }
   });
 </script>
@@ -498,7 +501,7 @@ if('serviceWorker' in navigator){
 <body>
 
 <!-- 로그인 화면 -->
-<div id="login-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a3a5c">
+<div id="login-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:#1a3a5c">
   <div style="background:#fff;border-radius:12px;padding:40px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.3);text-align:center">
     <div style="font-size:22px;font-weight:700;color:#1a3a5c;margin-bottom:4px">화천이티씨</div>
     <div style="font-size:13px;color:#888;margin-bottom:28px">견적서 시스템</div>
