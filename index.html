@@ -840,10 +840,16 @@ let _docsCache={}, _custsCache=[];
 // 초기화
 // ════════════════════════════════════
 window.onload=()=>{
-  document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
-  genDocNo();
-  renderItems();
-  calcTotals();
+  const _draft = localStorage.getItem('htc_draft');
+  if(_draft){
+    // 임시저장 있음 - genDocNo/renderItems는 loadDraft/newDoc에서 처리
+    calcTotals();
+  } else {
+    document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
+    genDocNo();
+    renderItems();
+    calcTotals();
+  }
   setInterval(autoSave,30000);
   window._domReady = true;
   if(window._firebaseUser) window._checkDraft();
