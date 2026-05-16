@@ -820,17 +820,7 @@ let _docsCache={}, _custsCache=[];
 window.onload=()=>{
   document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
   genDocNo();
-  const draft=localStorage.getItem('htc_draft');
-  if(draft){
-    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-      loadDraft();
-    }else{
-      localStorage.removeItem('htc_draft');
-      newDoc();
-    }
-  }else{
-    newDoc();
-  }
+  newDoc();
   renderItems();
   calcTotals();
   setInterval(autoSave,30000);
@@ -1551,6 +1541,16 @@ function doLogin(){
       // 명시적으로 1회 로드도 실행
       loadFirestoreDocs();
       loadFirestoreCusts();
+      // 임시저장 있으면 팝업
+      const draft=localStorage.getItem('htc_draft');
+      if(draft){
+        if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
+          loadDraft();
+        }else{
+          localStorage.removeItem('htc_draft');
+          newDoc();
+        }
+      }
     })
     .catch(e=>{
       err.textContent='이메일 또는 비밀번호가 올바르지 않습니다.';
