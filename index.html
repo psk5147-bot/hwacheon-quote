@@ -840,6 +840,11 @@ function _init(){
   window._domReady = true;
   if(window._firebaseUser) window._checkDraft();
 }
+if(document.readyState==='complete'||document.readyState==='interactive'){
+  _init();
+}else{
+  document.addEventListener('DOMContentLoaded', _init);
+}
 
 function genDocNo(){
   const d=new Date();
@@ -1893,6 +1898,5 @@ function fmtDt(s){if(!s)return'';const d=new Date(s);return`${d.getMonth()+1}/${
 function p2(n){return String(n).padStart(2,'0');}
 </script>
 </div><!-- /main-app -->
-<script>_init();</script>
 </body>
 </html>
