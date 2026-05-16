@@ -1477,7 +1477,7 @@ function buildPreview(){
         <tr>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
-            <img style="width:46px;height:46px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
+            <img style="width:${isGwajang?'36':'46'}px;height:${isGwajang?'36':'46'}px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
           </td>
           <td style="border:.5px solid #c5cad6;height:70px"></td>
         </tr>
