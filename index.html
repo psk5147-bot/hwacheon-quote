@@ -317,6 +317,78 @@ table.item-table tbody tr:hover{background:#fafaf7}
   print-color-adjust: exact !important;
   -webkit-print-color-adjust: exact !important;
 }
+
+/* ════════════════════════════════════
+   품목 카드 (모바일용)
+════════════════════════════════════ */
+#item-card-list{display:none}
+.item-card{background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:12px;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.item-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.item-card-num{background:var(--primary);color:#fff;border-radius:50%;
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0}
+.item-card-del{border:none;background:transparent;cursor:pointer;
+  color:#bbb;font-size:22px;line-height:1;padding:0 2px}
+.item-card-del:active{color:var(--danger)}
+.item-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.item-card-field{display:flex;flex-direction:column;gap:4px}
+.item-card-field label{font-size:11px;color:var(--muted);font-weight:600}
+.item-card-field input,.item-card-field select{
+  border:1px solid var(--border);border-radius:4px;padding:8px 8px;
+  font-family:var(--font);font-size:16px;background:#fff;outline:none;width:100%}
+.item-card-field input:focus,.item-card-field select:focus{
+  border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(45,95,138,.12)}
+.item-card-field.full{grid-column:span 2}
+.item-card-amt{text-align:right;font-weight:700;font-size:14px;color:var(--primary);
+  margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+
+/* ════════════════════════════════════
+   모바일 반응형
+════════════════════════════════════ */
+@media(max-width:640px){
+  #appbar{padding:0 10px;height:auto;flex-wrap:wrap;gap:0}
+  #appbar .logo{font-size:14px;padding:9px 0}
+  #appbar .tabs{order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;border-top:1px solid rgba(255,255,255,.15)}
+  #appbar .tabs::-webkit-scrollbar{display:none}
+  #appbar .tabs button{padding:0 14px;height:38px;font-size:12px;white-space:nowrap;flex-shrink:0}
+  #appbar .actions{gap:4px}
+  #appbar .actions button{padding:5px 8px;font-size:11px}
+  #user-info{display:none!important}
+  #autosave-badge{font-size:10px;margin-right:4px}
+  #panel-quote{padding:10px 10px}
+  .form-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .form-grid.cols-3{grid-template-columns:1fr 1fr}
+  .form-grid.cols-2{grid-template-columns:1fr}
+  .form-grid .span-2{grid-column:span 2}
+  .form-group input,.form-group select,.form-group textarea,
+  .item-search-wrap input,.docs-toolbar input,.delivery-row input{font-size:16px!important}
+  .section-card .card-head{font-size:13px;padding:9px 12px}
+  .section-card .card-body{padding:10px 10px}
+  table.item-table{display:none}
+  #item-card-list{display:flex!important;flex-direction:column;gap:8px;padding:10px}
+  .item-tools{padding:8px 10px;gap:6px}
+  .item-search-wrap{min-width:0;flex:1}
+  .db-popup{min-width:0;width:calc(100vw - 40px);left:0}
+  .options-row{gap:12px;flex-wrap:wrap}
+  .opt-group label{font-size:13px}
+  .total-section{padding:10px 12px}
+  .tgrid .gv{font-size:16px}
+  .tgrid{gap:4px 16px}
+  .remarks-grid{grid-template-columns:1fr!important}
+  .delivery-row{flex-wrap:wrap}
+  #panel-preview > div:first-child{flex-wrap:wrap;gap:6px;margin:10px 10px}
+  #panel-preview > div:first-child .btn-sm{flex:1;font-size:13px;padding:10px 8px;text-align:center}
+  #panel-docs{padding:10px 10px}
+  .doc-card{flex-direction:column;align-items:flex-start;gap:8px}
+  .doc-card .doc-actions{width:100%;justify-content:flex-end}
+  #panel-customers{padding:10px 10px}
+  .customer-list{grid-template-columns:1fr}
+  .modal-box{min-width:0;width:calc(100vw - 24px);padding:16px 14px}
+  .modal-box input{font-size:16px!important}
+  .btn-sm{padding:9px 12px;font-size:13px}
+}
 </style>
 <link rel="manifest" href="#" id="manifest-link">
 <meta name="mobile-web-app-capable" content="yes">
@@ -461,7 +533,7 @@ if('serviceWorker' in navigator){
         </div>
         <div class="form-group">
           <label>이메일</label>
-          <div style="display:flex;gap:4px">
+          <div id="c-email-wrap" style="display:flex;gap:4px;flex-wrap:wrap">
             <input id="c-email-id" type="text" placeholder="아이디" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:6px 6px;font-family:var(--font);font-size:13px">
             <span style="line-height:31px">@</span>
             <select id="c-email-domain" onchange="toggleEmailDirect(this.value)" style="width:130px;border:1px solid var(--border);border-radius:4px;padding:5px 4px;font-family:var(--font);font-size:12px">
@@ -502,6 +574,7 @@ if('serviceWorker' in navigator){
         </thead>
         <tbody id="item-tbody"></tbody>
       </table>
+      <div id="item-card-list"></div>
     </div>
     <div class="item-tools">
       <div class="item-search-wrap">
@@ -793,7 +866,10 @@ function addItemFromDB(it){
 function delRow(i){items.splice(i,1);renderItems();calcTotals();sched();}
 function clearItems(){if(confirm('모든 품목을 삭제하시겠습니까?')){items=[];renderItems();calcTotals();}}
 
+function isMobile(){return window.innerWidth<=640;}
+
 function renderItems(){
+  // 데스크탑 테이블
   const tb=document.getElementById('item-tbody');
   tb.innerHTML='';
   items.forEach((it,i)=>{
@@ -816,7 +892,76 @@ function renderItems(){
     tr.innerHTML=`<td colspan="9" style="text-align:center;padding:18px;color:#aaa">품목을 검색하거나 빈 행을 추가하세요.</td>`;
     tb.appendChild(tr);
   }
+  // 모바일 카드
+  renderItemCards();
 }
+
+function renderItemCards(){
+  const cl=document.getElementById('item-card-list');
+  if(!cl)return;
+  const units=['EA','SET','개','본','M','kg','식','대','기타'];
+  if(!items.length){
+    cl.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;font-size:13px">품목을 검색하거나 빈 행을 추가하세요.</div>';
+    return;
+  }
+  cl.innerHTML=items.map((it,i)=>{
+    const amt=it.qty*it.price;
+    const unitOpts=units.map(u=>`<option${it.unit===u?' selected':''}>${u}</option>`).join('');
+    return `<div class="item-card">
+      <div class="item-card-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="item-card-num">${i+1}</div>
+          <span style="font-size:13px;font-weight:600;color:var(--primary)">${it.name||'(품목명 없음)'}</span>
+        </div>
+        <button class="item-card-del" onclick="delRow(${i})">×</button>
+      </div>
+      <div class="item-card-grid">
+        <div class="item-card-field full">
+          <label>품목명</label>
+          <input type="text" value="${esc(it.name)}" placeholder="품목명" onchange="updCard(${i},'name',this.value)">
+        </div>
+        <div class="item-card-field full">
+          <label>규격/모델</label>
+          <input type="text" value="${esc(it.spec)}" placeholder="규격/모델" onchange="updCard(${i},'spec',this.value)">
+        </div>
+        <div class="item-card-field">
+          <label>단위</label>
+          <select onchange="updCard(${i},'unit',this.value)">${unitOpts}</select>
+        </div>
+        <div class="item-card-field">
+          <label>수량</label>
+          <input type="text" inputmode="numeric" value="${comma(it.qty)}" style="text-align:right" onchange="updCard(${i},'qty',parseN(this.value))" oninput="fmtI(this)">
+        </div>
+        <div class="item-card-field full">
+          <label>단가 (원)</label>
+          <input type="text" inputmode="numeric" value="${comma(it.price)}" style="text-align:right" onchange="updCard(${i},'price',parseN(this.value))" oninput="fmtI(this)">
+        </div>
+        <div class="item-card-field full">
+          <label>비고</label>
+          <input type="text" value="${esc(it.note)}" placeholder="비고" onchange="updCard(${i},'note',this.value)">
+        </div>
+      </div>
+      <div class="item-card-amt">공급가액: ${comma(amt)} 원</div>
+    </div>`;
+  }).join('');
+}
+
+function updCard(i,f,v){
+  items[i][f]=v;
+  // 카드 내 공급가액 즉시 갱신
+  const cards=document.querySelectorAll('.item-card');
+  if(cards[i]){
+    const amtEl=cards[i].querySelector('.item-card-amt');
+    if(amtEl) amtEl.textContent='공급가액: '+comma(items[i].qty*items[i].price)+' 원';
+    // 헤더 이름도 갱신
+    if(f==='name'){
+      const nameEl=cards[i].querySelector('.item-card-header span');
+      if(nameEl) nameEl.textContent=v||'(품목명 없음)';
+    }
+  }
+  calcTotals();sched();
+}
+
 function upd(i,f,v){
   items[i][f]=v;
   const row=document.getElementById('item-tbody').rows[i];
