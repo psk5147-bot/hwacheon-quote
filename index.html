@@ -1385,12 +1385,14 @@ function buildPreview(){
           <table style="width:100%;border-collapse:collapse">
             <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:3px">▶ 공 급 자</td></tr>
             <tr>
-              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:64px;font-size:8pt;text-align:center;font-weight:600;height:44px;vertical-align:middle">상호</td>
-              <td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:8.5pt;height:44px;vertical-align:middle">${COM.name}</td>
+              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:64px;font-size:8pt;text-align:center;font-weight:600;height:22px">상호</td>
+              <td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:9pt;height:22px">${COM.name}</td>
             </tr>
             <tr>
-              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">대표자</td>
-              <td style="border:.5px solid #c5cad6;padding:4px 8px">${COM.rep}</td>
+              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600;height:22px">대표자</td>
+              <td style="border:.5px solid #c5cad6;padding:4px 8px;height:22px;position:relative">${COM.rep}
+                <img src="${STAMP_DAEPYO}" alt="직인" style="position:absolute;right:8px;top:-31px;width:62px;height:62px;object-fit:contain;opacity:0.88;pointer-events:none;z-index:10">
+              </td>
             </tr>
             <tr>
               <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">사업자번호</td>
@@ -1416,7 +1418,6 @@ function buildPreview(){
               <td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:7.5pt">${COM.bank}</td>
             </tr>
           </table>
-          <img src="${STAMP_DAEPYO}" alt="직인" style="position:absolute;right:8px;top:6px;width:30px;height:30px;object-fit:contain;opacity:0.88;pointer-events:none;z-index:10">
           </div>
         </td>
       </tr>
@@ -1476,7 +1477,7 @@ function buildPreview(){
         <tr>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
-            <img style="max-width:62px;max-height:62px;width:auto;height:auto;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
+            <img style="width:62px;height:62px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
           </td>
           <td style="border:.5px solid #c5cad6;height:70px"></td>
         </tr>
