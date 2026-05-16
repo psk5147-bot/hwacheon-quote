@@ -53,9 +53,7 @@ window._checkDraft = function(){
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>emailjs.init("e8rK4U5i2wL4nP2aE");</script>
 <script type="module">
-  // 페이지 로드 시 로그인 상태 자동 감지
-  import { getAuth, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getFirestore, collection, getDocs, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 
   const firebaseConfig = {
@@ -68,55 +66,35 @@ window._checkDraft = function(){
   };
 
   const app2 = initializeApp(firebaseConfig, "app2");
-  const auth2 = getAuth(app2);
   const db2 = getFirestore(app2);
 
-  // 로그인 상태 영구 유지
-  setPersistence(auth2, browserLocalPersistence);
+  // 바로 메인 앱 표시
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
 
-  window._authHandled = false;
-  onAuthStateChanged(auth2, async (user) => {
-    if(user && !window._authHandled){
-      window._authHandled = true;
-      document.getElementById('login-screen').style.opacity='0';document.getElementById('login-screen').style.pointerEvents='none';
-      document.getElementById('main-app').style.display='block';
-      document.getElementById('user-info').textContent = user.email;
-      try{
-        const q = query(collection(db2,'quotes'), orderBy('savedAt','desc'));
-        onSnapshot(q, (snap) => {
-          _docsCache = {};
-          snap.forEach(d => { _docsCache['htc_doc_'+d.id] = d.data(); });
-          if(document.getElementById('panel-docs') && document.getElementById('panel-docs').classList.contains('active')){
-            if(typeof renderDocs==='function') renderDocs();
-          }
-          if(typeof setBadge==='function') setBadge('동기화됨 ✓');
-        });
-      }catch(e){ console.log('문서 리스너 실패', e); }
-      try{
-        onSnapshot(collection(db2,'customers'), (snap) => {
-          _custsCache = [];
-          snap.forEach(d => { _custsCache.push(d.data()); });
-          if(document.getElementById('panel-customers') && document.getElementById('panel-customers').classList.contains('active')){
-            if(typeof renderCustomers==='function') renderCustomers();
-          }
-        });
-      }catch(e){ console.log('거래처 리스너 실패', e); }
-      // 자동로그인 시 임시저장 팝업 (1초 후 - 함수 정의 기다림)
-      setTimeout(()=>{
-        const draft = localStorage.getItem('htc_draft');
-        if(draft){
-          if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-            if(typeof loadDraft==='function') loadDraft();
-          }else{
-            localStorage.removeItem('htc_draft');
-            if(typeof newDoc==='function') newDoc();
-          }
-        }
-      }, 1000);
-    }else if(!user){
-      document.getElementById('login-screen').style.opacity='1';document.getElementById('login-screen').style.pointerEvents='auto';
-    }
-  });
+  // Firestore 실시간 리스너 (quotes)
+  try{
+    const q = query(collection(db2,'quotes'), orderBy('savedAt','desc'));
+    onSnapshot(q, (snap) => {
+      _docsCache = {};
+      snap.forEach(d => { _docsCache['htc_doc_'+d.id] = d.data(); });
+      if(document.getElementById('panel-docs')?.classList.contains('active')){
+        if(typeof renderDocs==='function') renderDocs();
+      }
+      if(typeof setBadge==='function') setBadge('동기화됨 ✓');
+    });
+  }catch(e){ console.log('문서 리스너 실패', e); }
+
+  // Firestore 실시간 리스너 (customers)
+  try{
+    onSnapshot(collection(db2,'customers'), (snap) => {
+      _custsCache = [];
+      snap.forEach(d => { _custsCache.push(d.data()); });
+      if(document.getElementById('panel-customers')?.classList.contains('active')){
+        if(typeof renderCustomers==='function') renderCustomers();
+      }
+    });
+  }catch(e){ console.log('거래처 리스너 실패', e); }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>화천이티씨 견적서</title>
@@ -834,7 +812,12 @@ let _docsCache={}, _custsCache=[];
 function _init(){
   const _draft = localStorage.getItem('htc_draft');
   if(_draft){
-    calcTotals();
+    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
+      loadDraft();
+    }else{
+      localStorage.removeItem('htc_draft');
+      newDoc();
+    }
   } else {
     document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
     genDocNo();
@@ -842,8 +825,6 @@ function _init(){
     calcTotals();
   }
   setInterval(autoSave,30000);
-  window._domReady = true;
-  if(window._firebaseUser) window._checkDraft();
 }
 if(document.readyState==='complete'||document.readyState==='interactive'){
   setTimeout(_init, 0);
