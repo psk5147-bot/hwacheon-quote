@@ -1683,7 +1683,16 @@ async function sendEmail(){
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
     const printArea = document.getElementById('print-area');
-    const canvas = await html2canvas(printArea, {scale:2, useCORS:true, allowTaint:true, imageTimeout:0, backgroundColor:'#ffffff', windowWidth:794});
+    // 모바일에서도 A4 너비로 강제 고정
+    const prevTransform = printArea.style.transform;
+    const prevWidth = printArea.style.width;
+    printArea.style.transform = 'none';
+    printArea.style.width = '794px';
+    await new Promise(r=>setTimeout(r,200));
+    const canvas = await html2canvas(printArea, {scale:3, useCORS:true, allowTaint:true, imageTimeout:0, backgroundColor:'#ffffff', windowWidth:794, width:794});
+    // 원복
+    printArea.style.transform = prevTransform;
+    printArea.style.width = prevWidth;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF('p','mm','a4');
     const pageW = pdf.internal.pageSize.getWidth();
