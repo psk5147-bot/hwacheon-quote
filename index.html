@@ -103,25 +103,32 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px}
-#appbar{background:var(--primary);color:#fff;display:flex;align-items:center;
-  justify-content:space-between;padding:0 20px;height:48px;position:sticky;
-  top:0;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+#appbar{background:var(--primary);color:#fff;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.appbar-top{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:48px}
+.appbar-right{display:flex;gap:6px;align-items:center}
 #appbar .logo{font-size:15px;font-weight:700;letter-spacing:-.3px}
 #appbar .logo span{color:var(--accent-light)}
-#appbar .tabs{display:flex;gap:2px}
+#appbar .tabs{display:flex;gap:0;border-top:1px solid rgba(255,255,255,.15);overflow-x:auto;scrollbar-width:none}
+#appbar .tabs::-webkit-scrollbar{display:none}
 #appbar .tabs button{background:transparent;border:none;color:rgba(255,255,255,.7);
-  padding:0 14px;height:48px;cursor:pointer;font-family:var(--font);font-size:13px;
-  border-bottom:2px solid transparent;transition:all .15s}
+  padding:0 16px;height:40px;cursor:pointer;font-family:var(--font);font-size:13px;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;flex-shrink:0}
 #appbar .tabs button.active,#appbar .tabs button:hover{color:#fff;border-bottom-color:var(--accent-light)}
-#appbar .actions{display:flex;gap:8px;align-items:center}
-#appbar .actions button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-  color:#fff;padding:5px 12px;border-radius:4px;cursor:pointer;font-family:var(--font);
-  font-size:12px;transition:background .15s}
-#appbar .actions button:hover{background:rgba(255,255,255,.22)}
-#appbar .actions button.btn-accent{background:var(--accent);border-color:var(--accent)}
-#appbar .actions button.btn-accent:hover{background:var(--accent-light)}
+.appbar-right button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:var(--font);
+  font-size:12px;transition:background .15s;white-space:nowrap}
+.appbar-right button:hover{background:rgba(255,255,255,.22)}
+#autosave-badge{font-size:11px;color:rgba(255,255,255,.6);margin-right:4px}
 .tab-panel{display:none}.tab-panel.active{display:block}
-#panel-quote{padding:16px 20px;max-width:1100px;margin:0 auto}
+#panel-quote{padding:12px 14px;max-width:1100px;margin:0 auto}
+/* 새 폼 그룹 */
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.fg label{font-size:11px;color:var(--muted);font-weight:600}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fi{border:1px solid var(--border);border-radius:4px;padding:8px 10px;
+  font-family:var(--font);font-size:14px;outline:none;background:#fff;width:100%;transition:border-color .15s}
+.fi:focus{border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(45,95,138,.1)}
 .section-card{background:var(--card);border:1px solid var(--border);border-radius:6px;
   margin-bottom:14px;overflow:hidden}
 .section-card .card-head{background:#f0ede6;border-bottom:1px solid var(--border);
@@ -204,11 +211,12 @@ table.item-table tbody tr:hover{background:#fafaf7}
 .remarks-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .remarks-grid .form-group{display:flex;flex-direction:column;gap:4px}
 /* 인쇄 */
-#panel-preview{padding:16px 20px}
-#preview-wrap{background:#888;padding:20px;min-height:200px;display:flex;justify-content:center}
+#panel-preview{padding:0}
+#preview-actions{display:flex;border-bottom:1px solid var(--border)}
+#preview-wrap{background:#888;padding:20px;min-height:200px;display:flex;justify-content:center;overflow-x:hidden}
 #print-area{background:#fff;width:210mm;padding:13mm 14mm 10mm;
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;color:#111;position:relative;
-  box-shadow:0 4px 24px rgba(0,0,0,.3)}
+  box-shadow:0 4px 24px rgba(0,0,0,.3);transform-origin:top center;flex-shrink:0}
 #print-area .doc-title{text-align:center;font-size:20pt;font-weight:700;letter-spacing:8px;
   margin-bottom:12px;color:#1a3a5c}
 #print-area .doc-meta{display:flex;justify-content:space-between;margin-bottom:8px;font-size:8.5pt}
@@ -285,8 +293,8 @@ table.item-table tbody tr:hover{background:#fafaf7}
     margin:0!important;
     padding:0!important;
     width:210mm!important;
-    height:297mm!important;
     background:white!important;
+    overflow:visible!important;
   }
   #panel-preview {
     display:block!important;
@@ -298,14 +306,17 @@ table.item-table tbody tr:hover{background:#fafaf7}
     padding:0!important;
     margin:0!important;
     display:block!important;
+    overflow:visible!important;
   }
   #print-area {
     box-shadow:none!important;
     margin:0!important;
     padding:13mm 14mm 10mm!important;
     width:210mm!important;
+    transform:none!important;
     print-color-adjust:exact!important;
     -webkit-print-color-adjust:exact!important;
+    overflow:visible!important;
   }
   @page {
     size: A4 portrait;
@@ -364,17 +375,10 @@ table.item-table tbody tr:hover{background:#fafaf7}
 ════════════════════════════════════ */
 @media(max-width:640px){
   /* 앱바 */
-  #appbar{padding:0 12px;height:auto;flex-wrap:wrap}
-  #appbar .logo{font-size:14px;padding:10px 0}
-  #appbar > div:last-child{padding:6px 0}
-  #appbar .tabs{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;border-top:1px solid rgba(255,255,255,.15)}
-  #appbar .tabs::-webkit-scrollbar{display:none}
-  #appbar .tabs button{padding:0 16px;height:40px;font-size:13px;white-space:nowrap;flex-shrink:0}
-  #appbar .actions{gap:6px}
-  #appbar .actions button{padding:6px 10px;font-size:12px}
-  #user-info{display:none!important}
-  #autosave-badge{font-size:11px;margin-right:6px}
+  .appbar-top{padding:0 12px;height:46px}
+  #appbar .logo{font-size:14px}
+  .appbar-right button{padding:5px 9px;font-size:11px}
+  #autosave-badge{display:none}
 
   /* 패널 */
   #panel-quote{padding:12px}
@@ -383,8 +387,9 @@ table.item-table tbody tr:hover{background:#fafaf7}
   input,select,textarea{font-size:16px!important}
 
   /* 섹션 카드 */
-  .section-card .card-head{font-size:13px;padding:10px 14px}
-  .section-card .card-body{padding:12px}
+  .section-card .card-head{font-size:13px;padding:10px 12px}
+  .section-card .card-body{padding:10px 12px}
+  #panel-quote{padding:10px}
 
   /* q-grid: 모바일에서도 2열 유지 (문서번호만 전폭) */
   .q-grid{grid-template-columns:1fr 1fr;gap:10px}
@@ -412,8 +417,7 @@ table.item-table tbody tr:hover{background:#fafaf7}
   .delivery-row input[type=number]{font-size:16px!important}
 
   /* 미리보기 버튼 */
-  #panel-preview > div:first-child{flex-wrap:wrap;gap:8px;margin:12px}
-  #panel-preview > div:first-child .btn-sm{flex:1;min-width:120px;padding:12px 8px;font-size:13px;text-align:center}
+  #preview-actions button{font-size:13px!important;padding:13px 8px!important}
 
   /* 문서함 */
   #panel-docs{padding:12px}
@@ -503,23 +507,21 @@ if('serviceWorker' in navigator){
 <!-- 메인 앱 -->
 <div id="main-app" style="display:none">
 <div id="appbar">
-  <div class="logo">화천<span>ETC</span> 견적서</div>
+  <div class="appbar-top">
+    <div class="logo">화천<span>ETC</span> 견적서</div>
+    <div class="appbar-right">
+      <span id="autosave-badge">● 저장됨</span>
+      <button onclick="saveDoc()">💾 저장</button>
+      <button onclick="newDoc()">＋ 새</button>
+      <button onclick="doLogout()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8)">로그아웃</button>
+      <button id="install-btn" onclick="installApp()" style="display:none;background:var(--accent);border:1px solid var(--accent);color:#fff">📲</button>
+    </div>
+  </div>
   <div class="tabs">
     <button class="active" onclick="showTab('quote',this)">견적서 작성</button>
     <button onclick="showTab('preview',this)">미리보기/인쇄</button>
     <button onclick="showTab('docs',this)">문서함</button>
     <button onclick="showTab('customers',this)">거래처 관리</button>
-  </div>
-  <div style="display:flex;align-items:center">
-    <span id="autosave-badge">● 저장됨</span>
-    <span id="user-info" style="font-size:11px;color:rgba(255,255,255,.7);margin-right:8px"></span>
-    <div class="actions">
-      <button onclick="saveDoc()">💾 저장</button>
-      <button onclick="newDoc()">＋ 새 문서</button>
-      <button id="install-btn" onclick="installApp()" style="display:none;background:var(--accent);border:1px solid var(--accent);color:#fff">📲 설치</button>
-      <button onclick="doLogout()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8)">로그아웃</button>
-      
-    </div>
   </div>
 </div>
 
@@ -528,29 +530,29 @@ if('serviceWorker' in navigator){
   <div class="section-card">
     <div class="card-head">📋 견적서 정보</div>
     <div class="card-body">
-      <div class="q-grid">
-        <div class="form-group q-span2">
-          <label>문서 번호</label>
-          <input id="q-no" type="text" readonly style="background:#f5f3ee">
-        </div>
-        <div class="form-group">
+      <div class="fg">
+        <label>문서 번호</label>
+        <input id="q-no" type="text" readonly style="background:#f5f3ee">
+      </div>
+      <div class="fg-row">
+        <div class="fg">
           <label>견적 일자</label>
           <input id="q-date" type="date">
         </div>
-        <div class="form-group">
-          <label>문서 유효기간</label>
+        <div class="fg">
+          <label>유효기간</label>
           <input id="q-valid" type="text" value="30일">
         </div>
-        <div class="form-group q-span2">
-          <label>담당자</label>
-          <div style="display:flex;gap:6px">
-            <select id="q-manager-sel" onchange="onManagerChange(this.value)" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:8px 8px;font-family:var(--font);font-size:14px">
-              <option value="문형록">문형록 대표</option>
-              <option value="문상록 과장">문상록 과장</option>
-              <option value="직접입력">직접입력</option>
-            </select>
-            <input id="q-manager-custom" type="text" placeholder="담당자명" style="display:none;flex:1;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--font);font-size:14px">
-          </div>
+      </div>
+      <div class="fg">
+        <label>담당자</label>
+        <div style="display:flex;gap:6px">
+          <select id="q-manager-sel" onchange="onManagerChange(this.value)" class="fi">
+            <option value="문형록">문형록 대표</option>
+            <option value="문상록 과장">문상록 과장</option>
+            <option value="직접입력">직접입력</option>
+          </select>
+          <input id="q-manager-custom" type="text" placeholder="담당자명" class="fi" style="display:none;flex:1">
         </div>
       </div>
     </div>
@@ -565,36 +567,34 @@ if('serviceWorker' in navigator){
       </div>
     </div>
     <div class="card-body">
-      <div class="q-grid">
-        <div class="form-group q-span2">
-          <label>거래처명</label>
-          <input id="c-company" type="text" placeholder="거래처명">
-        </div>
-        <div class="form-group">
+      <div class="fg">
+        <label>거래처명</label>
+        <input id="c-company" type="text" placeholder="거래처명">
+      </div>
+      <div class="fg-row">
+        <div class="fg">
           <label>담당자</label>
           <input id="c-person" type="text" placeholder="홍길동 귀중">
         </div>
-        <div class="form-group">
+        <div class="fg">
           <label>연락처</label>
           <input id="c-tel" type="text" placeholder="010-0000-0000" oninput="fmtTel(this)" maxlength="13" inputmode="tel">
         </div>
-        <div class="form-group q-span2">
-          <label>이메일</label>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input id="c-email-id" type="text" placeholder="아이디" inputmode="email"
-              style="flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--font);font-size:14px">
-            <span style="color:#888;flex-shrink:0">@</span>
-            <select id="c-email-domain" onchange="toggleEmailDirect(this.value)"
-              style="flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:7px 4px;font-family:var(--font);font-size:13px">
-              <option value="naver.com">naver.com</option>
-              <option value="gmail.com">gmail.com</option>
-              <option value="daum.net">daum.net</option>
-              <option value="direct">직접입력</option>
-            </select>
-          </div>
-          <input id="c-email-domain-custom" type="text" placeholder="도메인 직접입력" inputmode="email"
-            style="display:none;margin-top:4px;width:100%;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--font);font-size:14px">
+      </div>
+      <div class="fg">
+        <label>이메일</label>
+        <div style="display:flex;gap:6px;align-items:center;width:100%">
+          <input id="c-email-id" type="text" placeholder="아이디" inputmode="email" class="fi" style="flex:2;min-width:0">
+          <span style="color:#888;flex-shrink:0;font-size:14px">@</span>
+          <select id="c-email-domain" onchange="toggleEmailDirect(this.value)" class="fi" style="flex:3;min-width:0">
+            <option value="naver.com">naver.com</option>
+            <option value="gmail.com">gmail.com</option>
+            <option value="daum.net">daum.net</option>
+            <option value="direct">직접입력</option>
+          </select>
         </div>
+        <input id="c-email-domain-custom" type="text" placeholder="도메인 직접입력" inputmode="email" class="fi"
+          style="display:none;margin-top:6px;width:100%">
       </div>
       <input id="c-addr" type="text" style="display:none">
     </div>
@@ -602,16 +602,15 @@ if('serviceWorker' in navigator){
 
   <div class="section-card">
     <div class="card-head">📦 품목 내역</div>
-    <!-- 품목 검색 (항상 상단) -->
     <div class="item-search-bar">
-      <div style="position:relative;flex:1">
+      <div style="position:relative;flex:1;min-width:0">
         <input id="item-search" type="text" placeholder="🔍 품목 검색 (화천, 커버, 선반…)"
-          oninput="filterDB()" onfocus="showDBPopup()" onblur="setTimeout(hideDBPopup,200)">
+          oninput="filterDB()" onfocus="showDBPopup()" onblur="setTimeout(hideDBPopup,200)"
+          style="width:100%">
         <div id="db-popup" class="db-popup" style="display:none"></div>
       </div>
-      <button class="btn-sm btn-primary" onclick="addEmptyRow()">＋ 추가</button>
+      <button class="btn-sm btn-primary" onclick="addEmptyRow()" style="flex-shrink:0;white-space:nowrap">＋ 추가</button>
     </div>
-    <!-- 테이블 (데스크탑) -->
     <div id="item-table-wrap">
       <table class="item-table">
         <thead>
@@ -631,7 +630,6 @@ if('serviceWorker' in navigator){
       </table>
       <div id="item-card-list"></div>
     </div>
-    <!-- 옵션 & 합계 -->
     <div style="padding:10px 14px;border-top:1px solid var(--border);background:#fafaf8">
       <div class="options-row">
         <div class="opt-group">
@@ -696,18 +694,18 @@ if('serviceWorker' in navigator){
 
 <!-- 미리보기 -->
 <div id="panel-preview" class="tab-panel">
-  <div style="display:flex;gap:8px;margin:12px 20px">
-    <button class="btn-sm" onclick="sendEmail()" style="background:#27ae60;color:#fff;border-color:#27ae60">📧 이메일 발송</button>
-    <button class="btn-sm btn-primary" onclick="(()=>{
-    buildPreview();
-    const d=getFormData();
-    const company=d.company||'거래처';
-    const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
-    const pdfName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
-    const origTitle=document.title;
-    document.title=pdfName;
-    setTimeout(()=>{window.print();setTimeout(()=>{document.title=origTitle;},500);},300);
-  })()">🖨️ 인쇄</button>
+  <div id="preview-actions">
+    <button onclick="sendEmail()" style="background:#27ae60;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">📧 이메일 발송</button>
+    <button onclick="(()=>{
+      buildPreview();
+      const d=getFormData();
+      const company=d.company||'거래처';
+      const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
+      const pdfName=firstItem?company+'_'+firstItem+'_견적서':company+'_견적서';
+      const origTitle=document.title;
+      document.title=pdfName;
+      setTimeout(()=>{window.print();setTimeout(()=>{document.title=origTitle;},500);},300);
+    })()" style="background:var(--primary);color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🖨️ 인쇄 / PDF</button>
   </div>
   <div id="preview-wrap">
     <div id="print-area"></div>
@@ -835,10 +833,27 @@ function showTab(name,btn){
   document.querySelectorAll('#appbar .tabs button').forEach(b=>b.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='preview')buildPreview();
+  if(name==='preview'){buildPreview();setTimeout(scalePreview,100);}
   if(name==='docs')renderDocs();
   if(name==='customers')renderCustomers();
 }
+
+function scalePreview(){
+  const wrap=document.getElementById('preview-wrap');
+  const area=document.getElementById('print-area');
+  if(!wrap||!area)return;
+  const wrapW=wrap.clientWidth-40; // padding 20px*2
+  const areaW=area.offsetWidth;
+  if(areaW>0&&wrapW<areaW){
+    const scale=wrapW/areaW;
+    area.style.transform='scale('+scale+')';
+    area.style.marginBottom=((area.offsetHeight*(scale-1)))+'px';
+  } else {
+    area.style.transform='';
+    area.style.marginBottom='';
+  }
+}
+window.addEventListener('resize',scalePreview);
 
 // ════════════════════════════════════
 // 담당자
@@ -1287,11 +1302,11 @@ function buildPreview(){
   let total=after+vat;
   if(d.optTrunc)total=Math.floor(total/10)*10;
 
-  const MIN_ROWS = 10;
+  const MIN_ROWS = 6;
   const blankCount = Math.max(0, MIN_ROWS - d.items.length);
   const blanks = Array(blankCount).fill('').map((_, i) => {
     const bg = (d.items.length + i) % 2 === 1 ? '#f5f7fb' : '#ffffff';
-    return `<tr><td colspan="8" style="border:.5px solid #ccc;height:20px;background:${bg}"></td></tr>`;
+    return `<tr><td colspan="8" style="border:.5px solid #ccc;height:18px;background:${bg}"></td></tr>`;
   }).join('');
   const rows = d.items.map((it, i) => {
     const bg = i % 2 === 1 ? '#f5f7fb' : '#ffffff';
