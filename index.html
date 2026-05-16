@@ -115,11 +115,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
   padding:0 16px;height:40px;cursor:pointer;font-family:var(--font);font-size:13px;
   border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;flex-shrink:0}
 #appbar .tabs button.active,#appbar .tabs button:hover{color:#fff;border-bottom-color:var(--accent-light)}
-.appbar-right button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-  color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:var(--font);
-  font-size:12px;transition:background .15s;white-space:nowrap}
-.appbar-right button:hover{background:rgba(255,255,255,.22)}
-#autosave-badge{font-size:11px;color:rgba(255,255,255,.6);margin-right:4px}
+.appbar-right{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.ab-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  color:#fff;padding:6px 10px;border-radius:5px;cursor:pointer;font-family:var(--font);
+  font-size:12px;transition:background .15s;white-space:nowrap;flex-shrink:0}
+.ab-btn:hover{background:rgba(255,255,255,.22)}
+.ab-save{background:rgba(255,255,255,.18)}
+.ab-logout{padding:6px 9px;font-size:14px;background:rgba(255,255,255,.08)}
+.ab-install{background:var(--accent);border-color:var(--accent)}
+#autosave-badge{font-size:10px;color:rgba(255,255,255,.55);white-space:nowrap;flex-shrink:1;
+  overflow:hidden;text-overflow:ellipsis;max-width:60px}
 .tab-panel{display:none}.tab-panel.active{display:block}
 #panel-quote{padding:12px 14px;max-width:1100px;margin:0 auto}
 /* 새 폼 그룹 */
@@ -375,9 +380,10 @@ table.item-table tbody tr:hover{background:#fafaf7}
 ════════════════════════════════════ */
 @media(max-width:640px){
   /* 앱바 */
-  .appbar-top{padding:0 12px;height:46px}
-  #appbar .logo{font-size:14px}
-  .appbar-right button{padding:5px 9px;font-size:11px}
+  .appbar-top{padding:0 10px;height:46px}
+  #appbar .logo{font-size:13px}
+  .ab-btn{padding:5px 8px;font-size:11px}
+  .ab-logout{padding:5px 8px;font-size:13px}
   #autosave-badge{display:none}
 
   /* 패널 */
@@ -511,10 +517,10 @@ if('serviceWorker' in navigator){
     <div class="logo">화천<span>ETC</span> 견적서</div>
     <div class="appbar-right">
       <span id="autosave-badge">● 저장됨</span>
-      <button onclick="saveDoc()">💾 저장</button>
-      <button onclick="newDoc()">＋ 새</button>
-      <button onclick="doLogout()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8)">로그아웃</button>
-      <button id="install-btn" onclick="installApp()" style="display:none;background:var(--accent);border:1px solid var(--accent);color:#fff">📲</button>
+      <button class="ab-btn ab-save" onclick="saveDoc()">💾 저장</button>
+      <button class="ab-btn" onclick="newDoc()">＋ 새 문서</button>
+      <button class="ab-btn ab-logout" onclick="doLogout()" title="로그아웃">⏻</button>
+      <button id="install-btn" onclick="installApp()" class="ab-btn ab-install" style="display:none">📲</button>
     </div>
   </div>
   <div class="tabs">
