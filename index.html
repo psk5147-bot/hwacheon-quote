@@ -6,7 +6,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
   const firebaseConfig = {
@@ -29,7 +29,7 @@
   window._auth = auth;
   window._db = db;
   window._storage = getStorage(app);
-  window._fbFns = { signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, ref, uploadBytes, getDownloadURL };
+  window._fbFns = { signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, ref, uploadBytes, getDownloadURL };
 </script>
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -39,7 +39,7 @@
 <script type="module">
   // 페이지 로드 시 로그인 상태 자동 감지
   import { getAuth, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 
   const firebaseConfig = {
@@ -64,20 +64,29 @@
       document.getElementById('login-screen').style.display='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent = user.email;
-      // Firestore에서 데이터 로드
+      // Firestore 실시간 리스너 시작 (quotes)
       try{
         const q = query(collection(db2,'quotes'), orderBy('savedAt','desc'));
-        const snap = await getDocs(q);
-        const docs = {};
-        snap.forEach(d => { docs['htc_doc_'+d.id] = d.data(); });
-        localStorage.setItem('htc_docs', JSON.stringify(docs));
-      }catch(e){ console.log('문서 로드 실패', e); }
+        onSnapshot(q, (snap) => {
+          _docsCache = {};
+          snap.forEach(d => { _docsCache['htc_doc_'+d.id] = d.data(); });
+          // 문서함 탭이 열려있으면 자동 갱신
+          if(document.getElementById('panel-docs') && document.getElementById('panel-docs').classList.contains('active')){
+            if(typeof renderDocs==='function') renderDocs();
+          }
+          if(typeof setBadge==='function') setBadge('동기화됨 ✓');
+        });
+      }catch(e){ console.log('문서 리스너 실패', e); }
+      // Firestore 실시간 리스너 시작 (customers)
       try{
-        const snap2 = await getDocs(collection(db2,'customers'));
-        const custs = [];
-        snap2.forEach(d => { custs.push(d.data()); });
-        localStorage.setItem('htc_custs', JSON.stringify(custs));
-      }catch(e){ console.log('거래처 로드 실패', e); }
+        onSnapshot(collection(db2,'customers'), (snap) => {
+          _custsCache = [];
+          snap.forEach(d => { _custsCache.push(d.data()); });
+          if(document.getElementById('panel-customers') && document.getElementById('panel-customers').classList.contains('active')){
+            if(typeof renderCustomers==='function') renderCustomers();
+          }
+        });
+      }catch(e){ console.log('거래처 리스너 실패', e); }
       // 임시저장 있으면 선택, 없으면 새 문서
       const draft=localStorage.getItem('htc_draft');
       if(draft){
@@ -811,6 +820,7 @@ const COM={
 };
 
 let items=[],docId=null,autoTimer=null;
+let _docsCache={}, _custsCache=[];
 
 // ════════════════════════════════════
 // 초기화
@@ -840,8 +850,8 @@ function showTab(name,btn){
   document.getElementById('panel-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='preview'){buildPreview();setTimeout(scalePreview,100);}
-  if(name==='docs')renderDocs();
-  if(name==='customers')renderCustomers();
+  if(name==='docs'){loadFirestoreDocs().then(renderDocs);}
+  if(name==='customers'){loadFirestoreCusts().then(renderCustomers);}
 }
 
 function scalePreview(){
@@ -1155,10 +1165,6 @@ function saveDoc(){
   const fileName = firstItem
     ? `${company}_${firstItem}_견적서`
     : `${company}_견적서`;
-  const docs=getDocs2();
-  const key='htc_doc_'+d.docNo;
-  docs[key]={...d, savedAt:new Date().toISOString(), fileName};
-  localStorage.setItem('htc_docs',JSON.stringify(docs));
   localStorage.removeItem('htc_draft');
   setBadge('저장됨 ✓');
   alert('저장되었습니다:\n' + fileName);
@@ -1188,7 +1194,7 @@ function newDoc(){
   renderItems();calcTotals();
   localStorage.removeItem('htc_draft');
 }
-function getDocs2(){try{return JSON.parse(localStorage.getItem('htc_docs'))||{};}catch(e){return{};}}
+function getDocs2(){return _docsCache;}
 
 // ════════════════════════════════════
 // 문서함
@@ -1219,22 +1225,19 @@ function loadDoc(key){
 }
 function delDoc(key){
   if(!confirm('이 문서를 삭제하시겠습니까?'))return;
-  const docs=getDocs2();
   const docNo=key.replace('htc_doc_','');
-  delete docs[key];
-  localStorage.setItem('htc_docs',JSON.stringify(docs));
-  // Firestore에서도 삭제
+  // Firestore에서 삭제
   try{
     const {doc,deleteDoc,collection}=window._fbFns;
     deleteDoc(doc(collection(window._db,'quotes'),docNo));
-  }catch(e){}
-  renderDocs();
+    // onSnapshot이 자동으로 캐시 갱신 및 renderDocs 호출
+  }catch(e){console.log('삭제 실패',e);}
 }
 
 // ════════════════════════════════════
 // 거래처
 // ════════════════════════════════════
-function getCusts(){try{return JSON.parse(localStorage.getItem('htc_custs'))||[];}catch(e){return[];}}
+function getCusts(){return _custsCache.slice();}
 function openSaveCust(){
   document.getElementById('mc-co').value=document.getElementById('c-company').value;
   document.getElementById('mc-person').value=document.getElementById('c-person').value;
@@ -1255,9 +1258,9 @@ function saveCust(){
   const ex=custs.findIndex(c=>c.company===name);
   if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))custs[ex]={...custs[ex],...nc};else return;}
   else custs.push(nc);
-  localStorage.setItem('htc_custs',JSON.stringify(custs));
   saveCustToFirestore(nc);
-  closeModal('modal-save-cust');alert('저장되었습니다.');
+  closeModal('modal-save-cust');
+  alert('저장되었습니다. (실시간 동기화 중...)');
 }
 function openLoadCust(){renderCustSearch();openModal('modal-load-cust');}
 function renderCustSearch(){
@@ -1292,7 +1295,10 @@ function renderCustomers(){
 function applyCustSwitch(id){applyCust(id);showTab('quote',document.querySelector('#appbar .tabs button'));}
 function delCust(id){
   if(!confirm('거래처를 삭제하시겠습니까?'))return;
-  localStorage.setItem('htc_custs',JSON.stringify(getCusts().filter(c=>c.id!==id)));renderCustomers();
+  try{
+    const {doc,deleteDoc,collection}=window._fbFns;
+    deleteDoc(doc(collection(window._db,'customers'),String(id)));
+  }catch(e){console.log('거래처 삭제 실패',e);}
 }
 
 // ════════════════════════════════════
@@ -1510,6 +1516,8 @@ function doLogin(){
       document.getElementById('login-screen').style.display='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent=uc.user.email;
+      // 실시간 리스너는 onAuthStateChanged에서 이미 시작됨
+      // 명시적으로 1회 로드도 실행
       loadFirestoreDocs();
       loadFirestoreCusts();
       // 임시저장 있으면 선택 팝업
@@ -1549,11 +1557,8 @@ async function saveDoc(){
   const fileName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
   const data={...d,savedAt:new Date().toISOString(),fileName};
   // 로컬 저장 먼저 (즉시 문서함에 반영)
-  const docs=getDocs2();
-  docs['htc_doc_'+d.docNo]=data;
-  localStorage.setItem('htc_docs',JSON.stringify(docs));
   localStorage.removeItem('htc_draft');
-  setBadge('저장됨 ✓');
+  setBadge('저장 중...');
   // Firestore 저장
   try{
     const {doc,setDoc,collection}=window._fbFns;
@@ -1561,7 +1566,7 @@ async function saveDoc(){
     await setDoc(doc(collection(db,'quotes'),d.docNo),data);
     setBadge('저장됨 ✓');
   }catch(e){
-    setBadge('로컬저장됨');
+    setBadge('⚠️ 오프라인 저장');
     console.log('Firestore 저장 실패',e);
   }
   // 거래처 자동 등록
@@ -1570,8 +1575,6 @@ async function saveDoc(){
     const exists=custs.find(c=>c.company===d.company);
     if(!exists){
       const newC={id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:getEmail(),addr:''};
-      custs.push(newC);
-      localStorage.setItem('htc_custs',JSON.stringify(custs));
       saveCustToFirestore(newC);
     }
   }
@@ -1582,11 +1585,11 @@ async function loadFirestoreDocs(){
   try{
     const {collection,getDocs,query,orderBy}=window._fbFns;
     const db=window._db;
+    if(!db) return;
     const q=query(collection(db,'quotes'),orderBy('savedAt','desc'));
     const snap=await getDocs(q);
-    const docs={};
-    snap.forEach(d=>{docs['htc_doc_'+d.id]=d.data();});
-    localStorage.setItem('htc_docs',JSON.stringify(docs));
+    _docsCache={};
+    snap.forEach(d=>{_docsCache['htc_doc_'+d.id]=d.data();});
   }catch(e){console.log('Firestore 로드 실패',e);}
 }
 
@@ -1594,10 +1597,10 @@ async function loadFirestoreCusts(){
   try{
     const {collection,getDocs}=window._fbFns;
     const db=window._db;
+    if(!db) return;
     const snap=await getDocs(collection(db,'customers'));
-    const custs=[];
-    snap.forEach(d=>{custs.push(d.data());});
-    localStorage.setItem('htc_custs',JSON.stringify(custs));
+    _custsCache=[];
+    snap.forEach(d=>{_custsCache.push(d.data());});
   }catch(e){console.log('거래처 로드 실패',e);}
 }
 
@@ -1636,8 +1639,6 @@ async function sendEmail(){
     const exists=custs.find(c=>c.company===d.company);
     if(!exists){
       const newC={id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''};
-      custs.push(newC);
-      localStorage.setItem('htc_custs',JSON.stringify(custs));
       saveCustToFirestore(newC);
     }
   }
