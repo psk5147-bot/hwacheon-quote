@@ -78,24 +78,20 @@ window._checkDraft = function(){
   onAuthStateChanged(auth2, async (user) => {
     if(user && !window._authHandled){
       window._authHandled = true;
-      // 이미 로그인된 상태 → 바로 메인 앱 표시 (로그인 화면 없이)
       document.getElementById('login-screen').style.opacity='0';document.getElementById('login-screen').style.pointerEvents='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent = user.email;
-      // Firestore 실시간 리스너 시작 (quotes)
       try{
         const q = query(collection(db2,'quotes'), orderBy('savedAt','desc'));
         onSnapshot(q, (snap) => {
           _docsCache = {};
           snap.forEach(d => { _docsCache['htc_doc_'+d.id] = d.data(); });
-          // 문서함 탭이 열려있으면 자동 갱신
           if(document.getElementById('panel-docs') && document.getElementById('panel-docs').classList.contains('active')){
             if(typeof renderDocs==='function') renderDocs();
           }
           if(typeof setBadge==='function') setBadge('동기화됨 ✓');
         });
       }catch(e){ console.log('문서 리스너 실패', e); }
-      // Firestore 실시간 리스너 시작 (customers)
       try{
         onSnapshot(collection(db2,'customers'), (snap) => {
           _custsCache = [];
@@ -105,10 +101,19 @@ window._checkDraft = function(){
           }
         });
       }catch(e){ console.log('거래처 리스너 실패', e); }
-      window._firebaseUser = true;
-      if(window._domReady) window._checkDraft();
+      // 자동로그인 시 임시저장 팝업 (1초 후 - 함수 정의 기다림)
+      setTimeout(()=>{
+        const draft = localStorage.getItem('htc_draft');
+        if(draft){
+          if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
+            if(typeof loadDraft==='function') loadDraft();
+          }else{
+            localStorage.removeItem('htc_draft');
+            if(typeof newDoc==='function') newDoc();
+          }
+        }
+      }, 1000);
     }else if(!user){
-      // 비로그인 → 로그인 화면 표시
       document.getElementById('login-screen').style.opacity='1';document.getElementById('login-screen').style.pointerEvents='auto';
     }
   });
