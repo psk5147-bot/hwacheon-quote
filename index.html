@@ -858,14 +858,17 @@ function scalePreview(){
   const wrap=document.getElementById('preview-wrap');
   const area=document.getElementById('print-area');
   if(!wrap||!area)return;
-  const wrapW=wrap.clientWidth-40; // padding 20px*2
-  const areaW=area.offsetWidth;
-  if(areaW>0&&wrapW<areaW){
-    const scale=wrapW/areaW;
+  const wrapW=wrap.clientWidth-40;
+  const areaW=794; // A4 고정 너비
+  area.style.width=areaW+'px';
+  const scale=wrapW/areaW;
+  if(scale<1){
     area.style.transform='scale('+scale+')';
+    area.style.transformOrigin='top center';
     area.style.marginBottom=((area.offsetHeight*(scale-1)))+'px';
   } else {
     area.style.transform='';
+    area.style.transformOrigin='';
     area.style.marginBottom='';
   }
 }
