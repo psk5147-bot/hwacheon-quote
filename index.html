@@ -232,8 +232,8 @@ table.item-table tbody tr:hover{background:#fafaf7}
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;color:#111;position:relative;
   box-shadow:0 4px 24px rgba(0,0,0,.3);transform-origin:top center;flex-shrink:0;
   -webkit-text-size-adjust:none;text-size-adjust:none}
-#print-area *{font-family:'맑은 고딕','Malgun Gothic',sans-serif!important;box-sizing:border-box;-webkit-text-size-adjust:none!important;text-size-adjust:none!important;letter-spacing:normal;word-break:keep-all;overflow-wrap:break-word}
-#print-area .doc-title{text-align:center;font-size:20pt;font-weight:700;letter-spacing:8px;
+#print-area *{font-family:'맑은 고딕','Malgun Gothic',sans-serif!important;box-sizing:border-box;-webkit-text-size-adjust:none!important;text-size-adjust:none!important;letter-spacing:0!important;word-break:keep-all;overflow-wrap:break-word}
+#print-area .doc-title{text-align:center;font-size:20pt;font-weight:700;letter-spacing:0;
   margin-bottom:12px;color:#1a3a5c}
 #print-area .doc-meta{display:flex;justify-content:space-between;margin-bottom:8px;font-size:8.5pt}
 #print-area .info-table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:8.5pt}
@@ -1368,7 +1368,7 @@ function buildPreview(){
   ].filter(([,v])=>v&&v!=='-');
   const remarkHTML = remarkRows.length ? `
     <div style="margin-bottom:10px">
-      <div style="background:#1a3a5c;color:#fff;font-weight:700;font-size:8pt;padding:5px 10px;letter-spacing:1px">▶ 특기사항</div>
+      <div style="background:#1a3a5c;color:#fff;font-weight:700;font-size:8pt;padding:5px 10px;letter-spacing:0">▶ 특기사항</div>
       ${remarkRows.map(([l,v])=>`
         <div style="display:flex;border-bottom:.5px solid #b0bbcc;border-left:.5px solid #b0bbcc;border-right:.5px solid #b0bbcc">
           <div style="width:80px;min-width:80px;max-width:80px;flex-shrink:0;background:#e8ecf4;color:#1a3a5c;font-weight:700;font-size:8pt;text-align:center;padding:5px 0;border-right:.5px solid #b0bbcc;display:flex;align-items:center;justify-content:center">${l}</div>
@@ -1386,7 +1386,7 @@ function buildPreview(){
     <!-- ① 제목 바 - 완전 중앙 정렬 -->
     <div style="background:#1a3a5c;color:#fff;margin-bottom:12px;padding:12px 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
       <div style="font-size:8pt;opacity:.8">${COM.name}</div>
-      <div style="font-size:18pt;font-weight:700;letter-spacing:16px;text-align:center;">견 &nbsp; 적 &nbsp; 서</div>
+      <div style="font-size:18pt;font-weight:700;letter-spacing:0;text-align:center;">견 &nbsp; 적 &nbsp; 서</div>
       <div style="font-size:7.5pt;opacity:.8;text-align:right;line-height:2">No. ${d.docNo}<br>${d.date} &nbsp; 유효: ${d.valid}</div>
     </div>
 
@@ -1395,7 +1395,7 @@ function buildPreview(){
       <tr>
         <td style="width:50%;vertical-align:top;padding-right:5px">
           <table style="width:100%;border-collapse:collapse">
-            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:3px">▶ 수 신</td></tr>
+            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:0">▶ 수 신</td></tr>
             <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:56px;font-size:8pt;text-align:center;font-weight:600">거래처</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:10pt">${d.company||'-'}</td></tr>
             <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">담당자</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${d.person||'-'}</td></tr>
             <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">연락처</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${d.tel||'-'}</td></tr>
@@ -1406,7 +1406,7 @@ function buildPreview(){
         <td style="width:50%;vertical-align:top;padding-left:5px">
           <div style="position:relative">
           <table style="width:100%;border-collapse:collapse">
-            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:3px">▶ 공 급 자</td></tr>
+            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:0">▶ 공 급 자</td></tr>
             <tr>
               <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:64px;font-size:8pt;text-align:center;font-weight:600;height:22px">상호</td>
               <td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:9pt;height:22px">${COM.name}</td>
@@ -1479,7 +1479,7 @@ function buildPreview(){
           <td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right">${d.optVat?comma(vat)+' 원':'미 적 용'}</td>
         </tr>
         <tr>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:center;letter-spacing:2px">합 계 금 액</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:center;letter-spacing:0">합 계 금 액</td>
           <td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:right;font-size:10pt">${comma(total)} 원</td>
         </tr>
       </table>
@@ -1493,9 +1493,9 @@ function buildPreview(){
       <table style="border-collapse:collapse;font-size:8.5pt;table-layout:fixed;width:270px">
         <colgroup><col style="width:90px"><col style="width:90px"><col style="width:90px"></colgroup>
         <tr>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:2px">담 당</td>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:2px">${isGwajang?'과 장':'대 표'}</td>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:2px">확 인</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">담 당</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">${isGwajang?'과 장':'대 표'}</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">확 인</td>
         </tr>
         <tr>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
