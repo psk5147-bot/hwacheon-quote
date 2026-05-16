@@ -1459,7 +1459,6 @@ async function sendEmail(){
     formData.append('file', pdfBlob, 'quote.pdf');
     formData.append('upload_preset', UPLOAD_PRESET);
     formData.append('public_id', publicId);
-    formData.append('resource_type', 'raw');
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
       method: 'POST',
