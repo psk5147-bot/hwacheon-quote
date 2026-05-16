@@ -102,9 +102,13 @@ window._checkDraft = function(){
           }
         });
       }catch(e){ console.log('거래처 리스너 실패', e); }
-      // 플래그 설정 - window.onload에서 팝업 처리
-      window._firebaseReady = true;
-      if(window._domReady) window._checkDraft();
+      // 자동로그인 시 팝업 - domReady 기다린 후 실행
+      const _draftTimer = setInterval(()=>{
+        if(window._domReady){
+          clearInterval(_draftTimer);
+          window._checkDraft();
+        }
+      }, 100);
     }else{
       // 비로그인 → 로그인 화면 표시
       document.getElementById('login-screen').style.display='flex';
@@ -843,7 +847,6 @@ window.onload=()=>{
   calcTotals();
   setInterval(autoSave,30000);
   window._domReady = true;
-  if(window._firebaseReady) window._checkDraft();
 };
 
 function genDocNo(){
