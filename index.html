@@ -1619,7 +1619,8 @@ async function sendEmail(){
   if(!d.email){alert('수신처 이메일을 입력해주세요.');return;}
   if(!d.company){alert('거래처명을 입력해주세요.');return;}
 
-  if(!confirm(`${d.email} 으로 견적서를 발송하시겠습니까?`))return;
+  if(!confirm(`${d.email} 으로 견적서를 발송하시겠습니까?\n\n※ PDF 생성 및 업로드에 5~10초 소요됩니다.`))return;
+  setBadge('PDF 생성 중...');
 
   // 합계 계산
   let supply=d.items.reduce((s,it)=>s+it.qty*it.price,0);
@@ -1648,7 +1649,7 @@ async function sendEmail(){
   try{
     // 미리보기 빌드
     buildPreview();
-    await new Promise(r=>setTimeout(r,800));
+    await new Promise(r=>setTimeout(r,1200)); // 렌더링 완료 대기
 
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
@@ -1674,7 +1675,9 @@ async function sendEmail(){
     // Cloudinary Unsigned 업로드
     const CLOUD_NAME = 'dlehtyeg6';
     const UPLOAD_PRESET = 'hwacheon_quotes';
-    const publicId = `quotes/${d.docNo}_${d.company}_견적서`;
+    // 타임스탬프 추가 → 매번 새 파일로 업로드 (캐시 문제 방지)
+    const ts = Date.now();
+    const publicId = `quotes/${d.docNo}_${d.company}_견적서_${ts}`;
 
     const formData = new FormData();
     formData.append('file', pdfBlob, 'quote.pdf');
