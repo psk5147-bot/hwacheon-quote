@@ -841,7 +841,7 @@ function _init(){
   if(window._firebaseUser) window._checkDraft();
 }
 if(document.readyState==='complete'||document.readyState==='interactive'){
-  _init();
+  setTimeout(_init, 0);
 }else{
   document.addEventListener('DOMContentLoaded', _init);
 }
