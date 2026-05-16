@@ -565,7 +565,7 @@ if('serviceWorker' in navigator){
             <option value="문상록 과장">문상록 과장</option>
             <option value="직접입력">직접입력</option>
           </select>
-          <input id="q-manager-custom" type="text" placeholder="담당자명" class="fi" style="display:none;flex:1">
+          <input id="q-manager-custom" type="text" placeholder="담당자명" class="fi" style="display:none;flex:1" oninput="sched()">
         </div>
       </div>
     </div>
@@ -582,16 +582,16 @@ if('serviceWorker' in navigator){
     <div class="card-body">
       <div class="fg">
         <label>거래처명</label>
-        <input id="c-company" type="text" placeholder="거래처명">
+        <input id="c-company" type="text" placeholder="거래처명" oninput="sched()">
       </div>
       <div class="fg-row">
         <div class="fg">
           <label>담당자</label>
-          <input id="c-person" type="text" placeholder="홍길동 귀중">
+          <input id="c-person" type="text" placeholder="홍길동 귀중" oninput="sched()">
         </div>
         <div class="fg">
           <label>연락처</label>
-          <input id="c-tel" type="text" placeholder="010-0000-0000" oninput="fmtTel(this)" maxlength="13" inputmode="tel">
+          <input id="c-tel" type="text" placeholder="010-0000-0000" oninput="fmtTel(this);sched()" maxlength="13" inputmode="tel">
         </div>
       </div>
       <div class="fg">
@@ -683,22 +683,22 @@ if('serviceWorker' in navigator){
           <label>① 납 기</label>
           <div class="delivery-row">
             <span>발주 후</span>
-            <input id="r-delivery-days" type="number" min="1" max="999" placeholder="0" style="width:60px">
+            <input id="r-delivery-days" type="number" min="1" max="999" placeholder="0" style="width:60px" oninput="sched()">
             <span>일 이내</span>
-            <input id="r-delivery-extra" type="text" placeholder="(추가 조건 입력)" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-family:var(--font);font-size:12px">
+            <input id="r-delivery-extra" type="text" placeholder="(추가 조건 입력)" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-family:var(--font);font-size:12px" oninput="sched()">
           </div>
         </div>
         <div class="form-group">
           <label>② 결재 조건</label>
-          <input id="r-payment" type="text" placeholder="예: 세금계산서 발행 후 30일 이내">
+          <input id="r-payment" type="text" placeholder="예: 세금계산서 발행 후 30일 이내" oninput="sched()">
         </div>
         <div class="form-group">
           <label>③ 견적 유효기간</label>
-          <input id="r-valid-period" type="text" placeholder="예: 견적일로부터 30일" value="견적일로부터 30일">
+          <input id="r-valid-period" type="text" placeholder="예: 견적일로부터 30일" value="견적일로부터 30일" oninput="sched()">
         </div>
         <div class="form-group">
           <label>④ 비 고</label>
-          <textarea id="r-note" rows="2" placeholder="기타 특이사항, 보증 내용 등 (줄바꿈 가능)"></textarea>
+          <textarea id="r-note" rows="2" placeholder="기타 특이사항, 보증 내용 등 (줄바꿈 가능)" oninput="sched()"></textarea>
         </div>
       </div>
     </div>
@@ -1187,7 +1187,7 @@ function autoSave(){
   localStorage.setItem('htc_draft',JSON.stringify({...d,savedAt:new Date().toISOString()}));
   setBadge('자동저장 완료');setTimeout(()=>setBadge('저장됨'),2000);
 }
-function sched(){clearTimeout(autoTimer);autoTimer=setTimeout(autoSave,3000);}
+function sched(){clearTimeout(autoTimer);setBadge('저장 대기중...');autoTimer=setTimeout(autoSave,3000);}
 function loadDraft(){
   const s=localStorage.getItem('htc_draft');
   if(s){try{setFormData(JSON.parse(s));}catch(e){}}
