@@ -849,7 +849,7 @@ function showTab(name,btn){
   document.querySelectorAll('#appbar .tabs button').forEach(b=>b.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='preview'){buildPreview();setTimeout(scalePreview,100);}
+  if(name==='preview'){buildPreview().then(()=>setTimeout(scalePreview,100));}
   if(name==='docs'){loadFirestoreDocs().then(renderDocs);}
   if(name==='customers'){loadFirestoreCusts().then(renderCustomers);}
 }
@@ -1667,7 +1667,7 @@ async function sendEmail(){
   let pdfUrl = '';
   try{
     // 미리보기 빌드
-    buildPreview();
+    await buildPreview();
     await new Promise(r=>setTimeout(r,1200)); // 렌더링 완료 대기
 
     // html2canvas로 캡처 후 PDF 생성
