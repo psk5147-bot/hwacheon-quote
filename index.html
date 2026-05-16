@@ -1688,16 +1688,26 @@ async function sendEmail(){
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
     const printArea = document.getElementById('print-area');
+
+    // 모바일 viewport 임시 데스크탑으로 변경
+    const viewportMeta = document.querySelector('meta[name=viewport]');
+    const prevViewport = viewportMeta.content;
+    viewportMeta.content = 'width=1024';
+    await new Promise(r=>setTimeout(r,300));
+
     const prevStyle = printArea.getAttribute('style')||'';
     printArea.style.transform = 'none';
     printArea.style.width = '794px';
-    printArea.style.webkitTextSizeAdjust = 'none';
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,300));
+
     const canvas = await html2canvas(printArea, {
       scale:3, useCORS:true, allowTaint:true, imageTimeout:0,
-      backgroundColor:'#ffffff', width:794, windowWidth:794
+      backgroundColor:'#ffffff', width:794, windowWidth:1024
     });
+
+    // 원복
     printArea.setAttribute('style', prevStyle);
+    viewportMeta.content = prevViewport;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF('p','mm','a4');
     const pageW = pdf.internal.pageSize.getWidth();
