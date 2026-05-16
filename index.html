@@ -839,7 +839,7 @@ let _docsCache={}, _custsCache=[];
 // ════════════════════════════════════
 // 초기화
 // ════════════════════════════════════
-window.onload=()=>{
+window.addEventListener('load', ()=>{
   const _draft = localStorage.getItem('htc_draft');
   if(_draft){
     // 임시저장 있음 - genDocNo/renderItems는 loadDraft/newDoc에서 처리
