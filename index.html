@@ -1202,7 +1202,6 @@ function newDoc(){
   genDocNo();
   document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
   renderItems();calcTotals();
-  localStorage.removeItem('htc_draft');
 }
 function getDocs2(){return _docsCache;}
 
