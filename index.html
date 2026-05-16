@@ -257,7 +257,7 @@ table.item-table tbody tr:hover{background:#fafaf7}
 #print-area .sign-area{display:flex;justify-content:flex-end;gap:14px;margin-top:6px}
 #print-area .sign-box{text-align:center;font-size:8pt}
 #print-area .sign-box .sign-label{border-bottom:.5px solid #aaa;padding:2px 20px;margin-bottom:4px;color:#555}
-#print-area .stamp-img{width:56px;height:56px;object-fit:contain}
+#print-area .stamp-img{max-width:62px;max-height:62px;width:auto;height:auto;display:block;margin:auto}
 #print-area .stamp-wrap{display:inline-flex;align-items:center;justify-content:center}
 #print-area .company-info{font-size:7.5pt;color:#555;text-align:center;
   margin-top:8px;border-top:.5px solid #ccc;padding-top:5px}
@@ -1473,7 +1473,7 @@ function buildPreview(){
         <tr>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
-            <img style="width:58px;height:58px;object-fit:contain" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
+            <img style="max-width:62px;max-height:62px;width:auto;height:auto;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
           </td>
           <td style="border:.5px solid #c5cad6;height:70px"></td>
         </tr>
