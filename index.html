@@ -849,7 +849,7 @@ function showTab(name,btn){
   document.querySelectorAll('#appbar .tabs button').forEach(b=>b.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='preview'){buildPreview().then(()=>setTimeout(scalePreview,100));}
+  if(name==='preview'){buildPreview();setTimeout(scalePreview,100);}
   if(name==='docs'){loadFirestoreDocs().then(renderDocs);}
   if(name==='customers'){loadFirestoreCusts().then(renderCustomers);}
 }
@@ -1304,21 +1304,25 @@ function delCust(id){
 // ════════════════════════════════════
 // 미리보기
 // ════════════════════════════════════
-function squareStamp(src, size){
+function stampToSquare(src, size){
   return new Promise(resolve=>{
     const img=new Image();
     img.onload=()=>{
       const c=document.createElement('canvas');
       c.width=size; c.height=size;
       const ctx=c.getContext('2d');
-      ctx.drawImage(img,0,0,size,size);
+      // 비율 유지하며 중앙 배치
+      const scale=Math.min(size/img.width, size/img.height);
+      const w=img.width*scale, h=img.height*scale;
+      const x=(size-w)/2, y=(size-h)/2;
+      ctx.drawImage(img,x,y,w,h);
       resolve(c.toDataURL('image/png'));
     };
     img.src=src;
   });
 }
 
-async function buildPreview(){
+function buildPreview(){
   const d=getFormData();
   let supply=d.items.reduce((s,it)=>s+it.qty*it.price,0);
   let discAmt=0;
@@ -1371,8 +1375,7 @@ async function buildPreview(){
   const manager=d.manager;
   const isGwajang=manager.includes('문상록 과장')||manager.includes('과장');
   const stampSize=isGwajang?36:46;
-  const stampSrc=await squareStamp(isGwajang?STAMP_GWAJANG:STAMP_DAEPYO, stampSize);
-  const stampDaepyoSq=await squareStamp(STAMP_DAEPYO, 50);
+  const stampSrc=isGwajang?STAMP_GWAJANG:STAMP_DAEPYO;
 
   const html=`
     <!-- ① 제목 바 - 완전 중앙 정렬 -->
@@ -1406,7 +1409,7 @@ async function buildPreview(){
             <tr>
               <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600;height:22px">대표자</td>
               <td style="border:.5px solid #c5cad6;padding:4px 8px;height:22px;position:relative">${COM.rep}
-                <img src="${stampDaepyoSq}" alt="직인" style="position:absolute;right:8px;top:-25px;width:50px;height:50px;display:block;pointer-events:none;z-index:10">
+                <img src="${STAMP_DAEPYO}" alt="직인" style="position:absolute;right:8px;top:-25px;width:50px;height:50px;object-fit:contain;opacity:0.88;pointer-events:none;z-index:10">
               </td>
             </tr>
             <tr>
@@ -1492,7 +1495,7 @@ async function buildPreview(){
         <tr>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
           <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
-            <img style="width:${stampSize}px;height:${stampSize}px;display:block;margin:auto" src="${stampSrc}" alt="도장">
+            <img style="width:${stampSize}px;height:${stampSize}px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
           </td>
           <td style="border:.5px solid #c5cad6;height:70px"></td>
         </tr>
@@ -1667,8 +1670,15 @@ async function sendEmail(){
   let pdfUrl = '';
   try{
     // 미리보기 빌드
-    await buildPreview();
-    await new Promise(r=>setTimeout(r,1200)); // 렌더링 완료 대기
+    buildPreview();
+    await new Promise(r=>setTimeout(r,500));
+    // 도장 이미지 비율 고정 변환
+    const stampImgs = document.querySelectorAll('#print-area img[alt="도장"], #print-area img[alt="직인"]');
+    await Promise.all([...stampImgs].map(async img=>{
+      const size=parseInt(img.style.width)||50;
+      img.src=await stampToSquare(img.src, size);
+    }));
+    await new Promise(r=>setTimeout(r,300));
 
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
