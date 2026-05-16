@@ -319,75 +319,116 @@ table.item-table tbody tr:hover{background:#fafaf7}
 }
 
 /* ════════════════════════════════════
+   공통 그리드 (q-grid: 2열, 모바일 자동)
+════════════════════════════════════ */
+.q-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.q-span2{grid-column:span 2}
+
+/* 품목 검색바 (항상 상단 고정) */
+.item-search-bar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)}
+.item-search-bar input{flex:1;border:1px solid var(--border);border-radius:6px;
+  padding:8px 12px;font-family:var(--font);font-size:13px;outline:none}
+.item-search-bar input:focus{border-color:var(--primary-light)}
+
+/* ════════════════════════════════════
    품목 카드 (모바일용)
 ════════════════════════════════════ */
 #item-card-list{display:none}
-.item-card{background:#fff;border:1px solid var(--border);border-radius:8px;
-  padding:12px;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.item-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.item-card{background:#fff;border:1px solid #e2ddd6;border-radius:10px;
+  padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.item-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .item-card-num{background:var(--primary);color:#fff;border-radius:50%;
-  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;flex-shrink:0}
+  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;flex-shrink:0}
+.item-card-title{font-size:14px;font-weight:600;color:var(--primary);
+  margin-left:8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item-card-del{border:none;background:transparent;cursor:pointer;
-  color:#bbb;font-size:22px;line-height:1;padding:0 2px}
+  color:#ccc;font-size:24px;line-height:1;padding:0 4px;flex-shrink:0}
 .item-card-del:active{color:var(--danger)}
-.item-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.item-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .item-card-field{display:flex;flex-direction:column;gap:4px}
-.item-card-field label{font-size:11px;color:var(--muted);font-weight:600}
+.item-card-field label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .item-card-field input,.item-card-field select{
-  border:1px solid var(--border);border-radius:4px;padding:8px 8px;
+  border:1px solid var(--border);border-radius:6px;padding:9px 10px;
   font-family:var(--font);font-size:16px;background:#fff;outline:none;width:100%}
 .item-card-field input:focus,.item-card-field select:focus{
-  border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(45,95,138,.12)}
+  border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(45,95,138,.1)}
 .item-card-field.full{grid-column:span 2}
-.item-card-amt{text-align:right;font-weight:700;font-size:14px;color:var(--primary);
-  margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.item-card-amt{display:flex;justify-content:space-between;align-items:center;
+  margin-top:12px;padding-top:10px;border-top:1px solid #eee}
+.item-card-amt-label{font-size:12px;color:var(--muted)}
+.item-card-amt-value{font-weight:700;font-size:15px;color:var(--primary)}
 
 /* ════════════════════════════════════
    모바일 반응형
 ════════════════════════════════════ */
 @media(max-width:640px){
-  #appbar{padding:0 10px;height:auto;flex-wrap:wrap;gap:0}
-  #appbar .logo{font-size:14px;padding:9px 0}
-  #appbar .tabs{order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  /* 앱바 */
+  #appbar{padding:0 12px;height:auto;flex-wrap:wrap}
+  #appbar .logo{font-size:14px;padding:10px 0}
+  #appbar > div:last-child{padding:6px 0}
+  #appbar .tabs{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
     scrollbar-width:none;border-top:1px solid rgba(255,255,255,.15)}
   #appbar .tabs::-webkit-scrollbar{display:none}
-  #appbar .tabs button{padding:0 14px;height:38px;font-size:12px;white-space:nowrap;flex-shrink:0}
-  #appbar .actions{gap:4px}
-  #appbar .actions button{padding:5px 8px;font-size:11px}
+  #appbar .tabs button{padding:0 16px;height:40px;font-size:13px;white-space:nowrap;flex-shrink:0}
+  #appbar .actions{gap:6px}
+  #appbar .actions button{padding:6px 10px;font-size:12px}
   #user-info{display:none!important}
-  #autosave-badge{font-size:10px;margin-right:4px}
-  #panel-quote{padding:10px 10px}
-  .form-grid{grid-template-columns:1fr 1fr;gap:8px}
-  .form-grid.cols-3{grid-template-columns:1fr 1fr}
-  .form-grid.cols-2{grid-template-columns:1fr}
-  .form-grid .span-2{grid-column:span 2}
-  .form-group input,.form-group select,.form-group textarea,
-  .item-search-wrap input,.docs-toolbar input,.delivery-row input{font-size:16px!important}
-  .section-card .card-head{font-size:13px;padding:9px 12px}
-  .section-card .card-body{padding:10px 10px}
-  table.item-table{display:none}
-  #item-card-list{display:flex!important;flex-direction:column;gap:8px;padding:10px}
-  .item-tools{padding:8px 10px;gap:6px}
-  .item-search-wrap{min-width:0;flex:1}
-  .db-popup{min-width:0;width:calc(100vw - 40px);left:0}
-  .options-row{gap:12px;flex-wrap:wrap}
-  .opt-group label{font-size:13px}
-  .total-section{padding:10px 12px}
-  .tgrid .gv{font-size:16px}
-  .tgrid{gap:4px 16px}
+  #autosave-badge{font-size:11px;margin-right:6px}
+
+  /* 패널 */
+  #panel-quote{padding:12px}
+
+  /* 모든 input/select 16px (iOS 줌 방지) */
+  input,select,textarea{font-size:16px!important}
+
+  /* 섹션 카드 */
+  .section-card .card-head{font-size:13px;padding:10px 14px}
+  .section-card .card-body{padding:12px}
+
+  /* q-grid: 모바일에서도 2열 유지 (문서번호만 전폭) */
+  .q-grid{grid-template-columns:1fr 1fr;gap:10px}
+
+  /* 품목: 테이블 숨기고 카드로 */
+  #item-table-wrap > table{display:none}
+  #item-card-list{display:flex!important;flex-direction:column;gap:10px;padding:12px}
+
+  /* 검색바 */
+  .item-search-bar{padding:10px 12px;gap:8px}
+  .db-popup{width:calc(100vw - 30px);min-width:0;left:0}
+
+  /* 옵션 */
+  .options-row{gap:14px}
+  .opt-group label{font-size:14px}
+
+  /* 합계 */
+  .total-section{padding:12px 14px}
+  .tgrid{gap:5px 20px}
+  .tgrid .gv{font-size:17px}
+
+  /* 특기사항 */
   .remarks-grid{grid-template-columns:1fr!important}
-  .delivery-row{flex-wrap:wrap}
-  #panel-preview > div:first-child{flex-wrap:wrap;gap:6px;margin:10px 10px}
-  #panel-preview > div:first-child .btn-sm{flex:1;font-size:13px;padding:10px 8px;text-align:center}
-  #panel-docs{padding:10px 10px}
+  .delivery-row{flex-wrap:nowrap}
+  .delivery-row input[type=number]{font-size:16px!important}
+
+  /* 미리보기 버튼 */
+  #panel-preview > div:first-child{flex-wrap:wrap;gap:8px;margin:12px}
+  #panel-preview > div:first-child .btn-sm{flex:1;min-width:120px;padding:12px 8px;font-size:13px;text-align:center}
+
+  /* 문서함 */
+  #panel-docs{padding:12px}
   .doc-card{flex-direction:column;align-items:flex-start;gap:8px}
   .doc-card .doc-actions{width:100%;justify-content:flex-end}
-  #panel-customers{padding:10px 10px}
+
+  /* 거래처 */
+  #panel-customers{padding:12px}
   .customer-list{grid-template-columns:1fr}
-  .modal-box{min-width:0;width:calc(100vw - 24px);padding:16px 14px}
-  .modal-box input{font-size:16px!important}
-  .btn-sm{padding:9px 12px;font-size:13px}
+
+  /* 모달 */
+  .modal-box{min-width:0;width:calc(100vw - 20px);padding:16px}
+
+  /* 버튼 */
+  .btn-sm{padding:10px 14px;font-size:13px}
 }
 </style>
 <link rel="manifest" href="#" id="manifest-link">
@@ -487,8 +528,8 @@ if('serviceWorker' in navigator){
   <div class="section-card">
     <div class="card-head">📋 견적서 정보</div>
     <div class="card-body">
-      <div class="form-grid">
-        <div class="form-group">
+      <div class="q-grid">
+        <div class="form-group q-span2">
           <label>문서 번호</label>
           <input id="q-no" type="text" readonly style="background:#f5f3ee">
         </div>
@@ -497,29 +538,35 @@ if('serviceWorker' in navigator){
           <input id="q-date" type="date">
         </div>
         <div class="form-group">
+          <label>문서 유효기간</label>
+          <input id="q-valid" type="text" value="30일">
+        </div>
+        <div class="form-group q-span2">
           <label>담당자</label>
-          <div class="manager-select-row">
-            <select id="q-manager-sel" onchange="onManagerChange(this.value)" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px">
+          <div style="display:flex;gap:6px">
+            <select id="q-manager-sel" onchange="onManagerChange(this.value)" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:8px 8px;font-family:var(--font);font-size:14px">
               <option value="문형록">문형록 대표</option>
               <option value="문상록 과장">문상록 과장</option>
               <option value="직접입력">직접입력</option>
             </select>
-            <input id="q-manager-custom" type="text" placeholder="담당자명" style="display:none;width:100px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px">
+            <input id="q-manager-custom" type="text" placeholder="담당자명" style="display:none;flex:1;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--font);font-size:14px">
           </div>
-        </div>
-        <div class="form-group">
-          <label>문서 유효기간</label>
-          <input id="q-valid" type="text" value="30일">
         </div>
       </div>
     </div>
   </div>
 
   <div class="section-card">
-    <div class="card-head">🏢 수신처 (거래처)</div>
+    <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+      <span>🏢 수신처 (거래처)</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm btn-primary" onclick="openLoadCust()">📂 불러오기</button>
+        <button class="btn-sm" onclick="openSaveCust()">💾 저장</button>
+      </div>
+    </div>
     <div class="card-body">
-      <div class="customer-row" style="margin-bottom:8px">
-        <div class="form-group">
+      <div class="q-grid">
+        <div class="form-group q-span2">
           <label>거래처명</label>
           <input id="c-company" type="text" placeholder="거래처명">
         </div>
@@ -529,34 +576,42 @@ if('serviceWorker' in navigator){
         </div>
         <div class="form-group">
           <label>연락처</label>
-          <input id="c-tel" type="text" placeholder="010-0000-0000" oninput="fmtTel(this)" maxlength="13">
+          <input id="c-tel" type="text" placeholder="010-0000-0000" oninput="fmtTel(this)" maxlength="13" inputmode="tel">
         </div>
-        <div class="form-group">
+        <div class="form-group q-span2">
           <label>이메일</label>
-          <div id="c-email-wrap" style="display:flex;gap:4px;flex-wrap:wrap">
-            <input id="c-email-id" type="text" placeholder="아이디" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:6px 6px;font-family:var(--font);font-size:13px">
-            <span style="line-height:31px">@</span>
-            <select id="c-email-domain" onchange="toggleEmailDirect(this.value)" style="width:130px;border:1px solid var(--border);border-radius:4px;padding:5px 4px;font-family:var(--font);font-size:12px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="c-email-id" type="text" placeholder="아이디" inputmode="email"
+              style="flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--font);font-size:14px">
+            <span style="color:#888;flex-shrink:0">@</span>
+            <select id="c-email-domain" onchange="toggleEmailDirect(this.value)"
+              style="flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:7px 4px;font-family:var(--font);font-size:13px">
               <option value="naver.com">naver.com</option>
               <option value="gmail.com">gmail.com</option>
               <option value="daum.net">daum.net</option>
               <option value="direct">직접입력</option>
             </select>
-            <input id="c-email-domain-custom" type="text" placeholder="도메인 직접입력" style="display:none;width:130px;border:1px solid var(--border);border-radius:4px;padding:6px 6px;font-family:var(--font);font-size:12px">
           </div>
+          <input id="c-email-domain-custom" type="text" placeholder="도메인 직접입력" inputmode="email"
+            style="display:none;margin-top:4px;width:100%;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--font);font-size:14px">
         </div>
-        <button class="btn-sm btn-primary" style="margin-bottom:1px" onclick="openSaveCust()">거래처 저장</button>
-        <button class="btn-sm" style="margin-bottom:1px" onclick="openLoadCust()">불러오기</button>
       </div>
-      <div class="form-group" style="display:none">
-        <label>주소</label>
-        <input id="c-addr" type="text" placeholder="거래처 주소">
-      </div>
+      <input id="c-addr" type="text" style="display:none">
     </div>
   </div>
 
   <div class="section-card">
     <div class="card-head">📦 품목 내역</div>
+    <!-- 품목 검색 (항상 상단) -->
+    <div class="item-search-bar">
+      <div style="position:relative;flex:1">
+        <input id="item-search" type="text" placeholder="🔍 품목 검색 (화천, 커버, 선반…)"
+          oninput="filterDB()" onfocus="showDBPopup()" onblur="setTimeout(hideDBPopup,200)">
+        <div id="db-popup" class="db-popup" style="display:none"></div>
+      </div>
+      <button class="btn-sm btn-primary" onclick="addEmptyRow()">＋ 추가</button>
+    </div>
+    <!-- 테이블 (데스크탑) -->
     <div id="item-table-wrap">
       <table class="item-table">
         <thead>
@@ -576,14 +631,7 @@ if('serviceWorker' in navigator){
       </table>
       <div id="item-card-list"></div>
     </div>
-    <div class="item-tools">
-      <div class="item-search-wrap">
-        <input id="item-search" type="text" placeholder="🔍 품목 검색 (화천, 커버, 선반…)" oninput="filterDB()" onfocus="showDBPopup()" onblur="setTimeout(hideDBPopup,200)">
-        <div id="db-popup" class="db-popup" style="display:none"></div>
-      </div>
-      <button class="btn-sm btn-primary" onclick="addEmptyRow()">＋ 빈 행 추가</button>
-      <button class="btn-sm" onclick="clearItems()">초기화</button>
-    </div>
+    <!-- 옵션 & 합계 -->
     <div style="padding:10px 14px;border-top:1px solid var(--border);background:#fafaf8">
       <div class="options-row">
         <div class="opt-group">
@@ -901,66 +949,73 @@ function renderItemCards(){
   if(!cl)return;
   const units=['EA','SET','개','본','M','kg','식','대','기타'];
   if(!items.length){
-    cl.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;font-size:13px">품목을 검색하거나 빈 행을 추가하세요.</div>';
+    cl.innerHTML='<div style="text-align:center;padding:24px;color:#bbb;font-size:14px">＋ 빈 행 추가 또는 품목 검색으로 추가하세요</div>';
     return;
   }
   cl.innerHTML=items.map((it,i)=>{
     const amt=it.qty*it.price;
     const unitOpts=units.map(u=>`<option${it.unit===u?' selected':''}>${u}</option>`).join('');
-    return `<div class="item-card">
+    return `<div class="item-card" data-idx="${i}">
       <div class="item-card-header">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="item-card-num">${i+1}</div>
-          <span style="font-size:13px;font-weight:600;color:var(--primary)">${it.name||'(품목명 없음)'}</span>
-        </div>
+        <div class="item-card-num">${i+1}</div>
+        <div class="item-card-title">${esc(it.name)||'품목명을 입력하세요'}</div>
         <button class="item-card-del" onclick="delRow(${i})">×</button>
       </div>
       <div class="item-card-grid">
         <div class="item-card-field full">
           <label>품목명</label>
-          <input type="text" value="${esc(it.name)}" placeholder="품목명" onchange="updCard(${i},'name',this.value)">
+          <input type="text" value="${esc(it.name)}" placeholder="품목명 입력"
+            oninput="updCardLive(${i},'name',this.value)" onchange="sched()">
         </div>
         <div class="item-card-field full">
-          <label>규격/모델</label>
-          <input type="text" value="${esc(it.spec)}" placeholder="규격/모델" onchange="updCard(${i},'spec',this.value)">
+          <label>규격 / 모델</label>
+          <input type="text" value="${esc(it.spec)}" placeholder="규격 또는 모델명"
+            oninput="updCardLive(${i},'spec',this.value)" onchange="sched()">
         </div>
         <div class="item-card-field">
           <label>단위</label>
-          <select onchange="updCard(${i},'unit',this.value)">${unitOpts}</select>
+          <select onchange="updCardLive(${i},'unit',this.value);sched()">${unitOpts}</select>
         </div>
         <div class="item-card-field">
           <label>수량</label>
-          <input type="text" inputmode="numeric" value="${comma(it.qty)}" style="text-align:right" onchange="updCard(${i},'qty',parseN(this.value))" oninput="fmtI(this)">
+          <input type="text" inputmode="numeric" value="${comma(it.qty)}"
+            style="text-align:right" oninput="fmtI(this)" onchange="updCardLive(${i},'qty',parseN(this.value));sched()">
         </div>
         <div class="item-card-field full">
           <label>단가 (원)</label>
-          <input type="text" inputmode="numeric" value="${comma(it.price)}" style="text-align:right" onchange="updCard(${i},'price',parseN(this.value))" oninput="fmtI(this)">
+          <input type="text" inputmode="numeric" value="${comma(it.price)}"
+            style="text-align:right" oninput="fmtI(this)" onchange="updCardLive(${i},'price',parseN(this.value));sched()">
         </div>
         <div class="item-card-field full">
           <label>비고</label>
-          <input type="text" value="${esc(it.note)}" placeholder="비고" onchange="updCard(${i},'note',this.value)">
+          <input type="text" value="${esc(it.note)}" placeholder="비고 (선택)"
+            oninput="updCardLive(${i},'note',this.value)" onchange="sched()">
         </div>
       </div>
-      <div class="item-card-amt">공급가액: ${comma(amt)} 원</div>
+      <div class="item-card-amt">
+        <span class="item-card-amt-label">공급가액</span>
+        <span class="item-card-amt-value" id="card-amt-${i}">${comma(amt)} 원</span>
+      </div>
     </div>`;
   }).join('');
 }
 
-function updCard(i,f,v){
+function updCardLive(i,f,v){
   items[i][f]=v;
-  // 카드 내 공급가액 즉시 갱신
-  const cards=document.querySelectorAll('.item-card');
-  if(cards[i]){
-    const amtEl=cards[i].querySelector('.item-card-amt');
-    if(amtEl) amtEl.textContent='공급가액: '+comma(items[i].qty*items[i].price)+' 원';
-    // 헤더 이름도 갱신
-    if(f==='name'){
-      const nameEl=cards[i].querySelector('.item-card-header span');
-      if(nameEl) nameEl.textContent=v||'(품목명 없음)';
-    }
+  // 공급가액 즉시 갱신
+  if(f==='qty'||f==='price'){
+    const el=document.getElementById('card-amt-'+i);
+    if(el) el.textContent=comma(items[i].qty*items[i].price)+' 원';
   }
-  calcTotals();sched();
+  // 헤더 타이틀 즉시 갱신
+  if(f==='name'){
+    const card=document.querySelector(`.item-card[data-idx="${i}"] .item-card-title`);
+    if(card) card.textContent=v||'품목명을 입력하세요';
+  }
+  calcTotals();
 }
+
+function updCard(i,f,v){ updCardLive(i,f,v); sched(); }
 
 function upd(i,f,v){
   items[i][f]=v;
