@@ -73,7 +73,10 @@ window._checkDraft = function(){
   // 로그인 상태 영구 유지
   setPersistence(auth2, browserLocalPersistence);
 
+  window._authHandled = false;
   onAuthStateChanged(auth2, async (user) => {
+    if(window._authHandled) return;
+    window._authHandled = true;
     if(user){
       // 이미 로그인된 상태 → 바로 메인 앱 표시 (로그인 화면 없이)
       document.getElementById('login-screen').style.display='none';
@@ -1582,6 +1585,7 @@ function doLogin(){
 
 function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?'))return;
+  window._authHandled = false;
   window._fbFns.signOut(window._auth).then(()=>{
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('main-app').style.display='none';
