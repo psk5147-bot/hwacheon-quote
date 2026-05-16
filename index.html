@@ -76,11 +76,10 @@ window._checkDraft = function(){
 
   window._authHandled = false;
   onAuthStateChanged(auth2, async (user) => {
-    if(window._authHandled) return;
-    window._authHandled = true;
-    if(user){
+    if(user && !window._authHandled){
+      window._authHandled = true;
       // 이미 로그인된 상태 → 바로 메인 앱 표시 (로그인 화면 없이)
-      document.getElementById('login-screen').style.display='none';
+      document.getElementById('login-screen').style.opacity='0';document.getElementById('login-screen').style.pointerEvents='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent = user.email;
       // Firestore 실시간 리스너 시작 (quotes)
@@ -108,9 +107,9 @@ window._checkDraft = function(){
       }catch(e){ console.log('거래처 리스너 실패', e); }
       window._firebaseUser = true;
       if(window._domReady) window._checkDraft();
-    }else{
+    }else if(!user){
       // 비로그인 → 로그인 화면 표시
-      document.getElementById('login-screen').style.display='flex';
+      document.getElementById('login-screen').style.opacity='1';document.getElementById('login-screen').style.pointerEvents='auto';
     }
   });
 </script>
@@ -520,7 +519,7 @@ if('serviceWorker' in navigator){
 <body>
 
 <!-- 로그인 화면 -->
-<div id="login-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:#1a3a5c">
+<div id="login-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a3a5c;position:fixed;top:0;left:0;width:100%;z-index:999;opacity:0;pointer-events:none;transition:opacity 0.1s">
   <div style="background:#fff;border-radius:12px;padding:40px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.3);text-align:center">
     <div style="font-size:22px;font-weight:700;color:#1a3a5c;margin-bottom:4px">화천이티씨</div>
     <div style="font-size:13px;color:#888;margin-bottom:28px">견적서 시스템</div>
@@ -1562,7 +1561,7 @@ function doLogin(){
   if(!email||!pw){err.textContent='이메일과 비밀번호를 입력하세요.';err.style.display='block';return;}
   window._fbFns.signInWithEmailAndPassword(window._auth,email,pw)
     .then(uc=>{
-      document.getElementById('login-screen').style.display='none';
+      document.getElementById('login-screen').style.opacity='0';document.getElementById('login-screen').style.pointerEvents='none';
       document.getElementById('main-app').style.display='block';
       document.getElementById('user-info').textContent=uc.user.email;
       // 실시간 리스너는 onAuthStateChanged에서 이미 시작됨
@@ -1590,7 +1589,7 @@ function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?'))return;
   window._authHandled = false;
   window._fbFns.signOut(window._auth).then(()=>{
-    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('login-screen').style.opacity='1';document.getElementById('login-screen').style.pointerEvents='auto';
     document.getElementById('main-app').style.display='none';
   });
 }
