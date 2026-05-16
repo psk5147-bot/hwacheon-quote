@@ -5,6 +5,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
+<script>
+window._checkDraft = function(){
+  const draft = localStorage.getItem('htc_draft');
+  if(draft){
+    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
+      if(typeof loadDraft==='function') loadDraft();
+    }else{
+      localStorage.removeItem('htc_draft');
+      if(typeof newDoc==='function') newDoc();
+    }
+  }
+};
+</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -823,18 +836,6 @@ let _docsCache={}, _custsCache=[];
 // ════════════════════════════════════
 // 초기화
 // ════════════════════════════════════
-window._checkDraft = function(){
-  const draft = localStorage.getItem('htc_draft');
-  console.log('_checkDraft 실행됨, draft 있음:', !!draft);
-  if(draft){
-    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-      loadDraft();
-    }else{
-      localStorage.removeItem('htc_draft');
-      newDoc();
-    }
-  }
-};
 window.onload=()=>{
   document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
   genDocNo();
