@@ -1688,32 +1688,16 @@ async function sendEmail(){
     // html2canvas로 캡처 후 PDF 생성
     const {jsPDF} = window.jspdf;
     const printArea = document.getElementById('print-area');
-
-    // 캡처용 클론 생성 - 모바일 viewport 영향 없이 794px로 고정
-    const clone = printArea.cloneNode(true);
-    clone.style.cssText = `
-      position:fixed;left:-9999px;top:0;
-      width:794px;transform:none;
-      font-family:'맑은 고딕','Malgun Gothic',sans-serif;
-      font-size:9pt;color:#111;background:#fff;
-      padding:13mm 14mm 10mm;box-sizing:border-box;
-      -webkit-text-size-adjust:none;text-size-adjust:none;
-    `;
-    document.body.appendChild(clone);
-    // 클론 내 도장 이미지 정사각형 변환
-    const cloneImgs = clone.querySelectorAll('img[alt="도장"], img[alt="직인"]');
-    await Promise.all([...cloneImgs].map(async img=>{
-      const size=parseInt(img.style.width)||50;
-      img.src=await stampToSquare(img.src, size);
-    }));
-    await new Promise(r=>setTimeout(r,300));
-
-    const canvas = await html2canvas(clone, {
+    const prevStyle = printArea.getAttribute('style')||'';
+    printArea.style.transform = 'none';
+    printArea.style.width = '794px';
+    printArea.style.webkitTextSizeAdjust = 'none';
+    await new Promise(r=>setTimeout(r,400));
+    const canvas = await html2canvas(printArea, {
       scale:3, useCORS:true, allowTaint:true, imageTimeout:0,
-      backgroundColor:'#ffffff', width:794,
-      windowWidth:794
+      backgroundColor:'#ffffff', width:794, windowWidth:794
     });
-    document.body.removeChild(clone);
+    printArea.setAttribute('style', prevStyle);
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF('p','mm','a4');
     const pageW = pdf.internal.pageSize.getWidth();
