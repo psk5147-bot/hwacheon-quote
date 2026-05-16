@@ -498,22 +498,10 @@ const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/jso
 const manifestUrl = URL.createObjectURL(manifestBlob);
 document.getElementById('manifest-link').href = manifestUrl;
 
-// Service Worker 등록
+// 기존 Service Worker 전부 제거
 if('serviceWorker' in navigator){
-  const swCode = `
-    const CACHE = 'hwacheon-quote-v1';
-    self.addEventListener('install', e => {
-      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', './index.html'])));
-    });
-    self.addEventListener('fetch', e => {
-      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
-    });
-  `;
-  const swBlob = new Blob([swCode], {type:'application/javascript'});
-  const swUrl = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl).then(() => {
-    console.log('SW 등록 완료');
-  }).catch(e => console.log('SW 등록 실패', e));
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
 }
 </script>
 </head>
