@@ -8,6 +8,7 @@
 <script>
 window._checkDraft = function(){
   const draft = localStorage.getItem('htc_draft');
+  console.log('_checkDraft 호출됨, draft:', draft ? '있음' : '없음');
   if(draft){
     if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
       if(typeof loadDraft==='function') loadDraft();
