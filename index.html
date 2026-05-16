@@ -9,7 +9,6 @@
 <script>
 window._checkDraft = function(){
   const draft = localStorage.getItem('htc_draft');
-  console.log('_checkDraft 호출됨, draft:', draft ? '있음' : '없음');
   if(draft){
     if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
       if(typeof loadDraft==='function') loadDraft();
@@ -827,7 +826,7 @@ let _docsCache={}, _custsCache=[];
 // ════════════════════════════════════
 // 초기화
 // ════════════════════════════════════
-window.addEventListener('load', ()=>{
+window.onload=()=>{
   const _draft = localStorage.getItem('htc_draft');
   if(_draft){
     // 임시저장 있음 - genDocNo/renderItems는 loadDraft/newDoc에서 처리
