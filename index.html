@@ -1244,10 +1244,11 @@ function saveCust(){
     tel:document.getElementById('mc-tel').value,
     email:document.getElementById('mc-email').value,
     addr:document.getElementById('mc-addr').value};
-  const ex=custs.findIndex(c=>c.company===name);
-  if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))custs[ex]={...custs[ex],...nc};else return;}
-  else custs.push(nc);
+  const ex=_custsCache.findIndex(c=>c.company===name);
+  if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))_custsCache[ex]={..._custsCache[ex],...nc};else return;}
+  else _custsCache.push(nc);
   saveCustToFirestore(nc);
+  renderCustomers();
   closeModal('modal-save-cust');
   alert('저장되었습니다. (실시간 동기화 중...)');
 }
