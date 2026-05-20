@@ -571,19 +571,17 @@ if('serviceWorker' in navigator){
       <div class="fg">
         <label>이메일</label>
         <div style="display:flex;gap:6px;align-items:center;width:100%">
-          <input id="c-email-id" type="text" placeholder="아이디" inputmode="email" class="fi" style="flex:2;min-width:0" oninput="sched()">
+          <input id="c-email-id" type="text" placeholder="아이디" inputmode="email" class="fi" style="flex:2;min-width:0">
           <span style="color:#888;flex-shrink:0;font-size:14px">@</span>
-          <input id="c-email-domain" type="text" placeholder="도메인 직접입력" inputmode="email"
-            class="fi" style="flex:3;min-width:0" list="email-domain-list" oninput="sched()">
-          <datalist id="email-domain-list">
-            <option value="naver.com">
-            <option value="gmail.com">
-            <option value="daum.net">
-            <option value="hanmail.net">
-            <option value="kakao.com">
-            <option value="nate.com">
-          </datalist>
+          <select id="c-email-domain" onchange="toggleEmailDirect(this.value)" class="fi" style="flex:3;min-width:0">
+            <option value="naver.com">naver.com</option>
+            <option value="gmail.com">gmail.com</option>
+            <option value="daum.net">daum.net</option>
+            <option value="direct">직접입력</option>
+          </select>
         </div>
+        <input id="c-email-domain-custom" type="text" placeholder="도메인 직접입력" inputmode="email" class="fi"
+          style="display:none;margin-top:6px;width:100%">
       </div>
       <input id="c-addr" type="text" style="display:none">
     </div>
@@ -746,6 +744,23 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-save-title">
+  <div class="modal-box">
+    <h3>💾 견적서 저장</h3>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:5px">견적 제목 (같은 업체에 여러 견적 구분용)</label>
+      <input type="text" id="save-title-input" placeholder="예: 1차 견적, 선반 추가 견적, 수정본…"
+        style="width:100%;border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--font);font-size:14px"
+        onkeydown="if(event.key==='Enter')confirmSaveTitle()">
+      <div id="save-title-preview" style="margin-top:6px;font-size:11px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('modal-save-title')">취소</button>
+      <button class="btn-sm btn-primary" onclick="confirmSaveTitle()">저장</button>
+    </div>
+  </div>
+</div>
+
 <div id="portal" style="display:none"></div>
 
 <script>
@@ -890,18 +905,34 @@ function fmtTel(el){
 // ════════════════════════════════════
 // 이메일 도메인
 // ════════════════════════════════════
-function toggleEmailDirect(v){}
+function toggleEmailDirect(v){
+  const dc=document.getElementById('c-email-domain-custom');
+  dc.style.display=v==='direct'?'':'none';
+  if(v!=='direct')dc.value='';
+}
 function getEmail(){
   const id=document.getElementById('c-email-id').value.trim();
   if(!id)return'';
-  const dom=document.getElementById('c-email-domain').value.trim();
+  const domSel=document.getElementById('c-email-domain').value;
+  const dom=domSel==='direct'?document.getElementById('c-email-domain-custom').value.trim():domSel;
   return dom?id+'@'+dom:id;
 }
 function setEmail(email){
-  if(!email){document.getElementById('c-email-id').value='';document.getElementById('c-email-domain').value='';return;}
+  if(!email){document.getElementById('c-email-id').value='';return;}
   const parts=email.split('@');
   document.getElementById('c-email-id').value=parts[0]||'';
-  document.getElementById('c-email-domain').value=parts[1]||'';
+  if(parts[1]){
+    const known=['naver.com','gmail.com','daum.net'];
+    const sel=document.getElementById('c-email-domain');
+    if(known.includes(parts[1])){
+      sel.value=parts[1];
+      document.getElementById('c-email-domain-custom').style.display='none';
+    }else{
+      sel.value='direct';
+      document.getElementById('c-email-domain-custom').style.display='';
+      document.getElementById('c-email-domain-custom').value=parts[1];
+    }
+  }
 }
 
 // ════════════════════════════════════
@@ -1178,14 +1209,14 @@ function renderDocs(){
   const docs=getDocs2();
   const list=document.getElementById('doc-list');
   const entries=Object.entries(docs)
-    .filter(([k,v])=>!q||v.docNo.toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q))
+    .filter(([k,v])=>!q||v.docNo.toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q)||(v.fileName||'').toLowerCase().includes(q)||(v.saveTitle||'').toLowerCase().includes(q))
     .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
   if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 문서가 없습니다.</div>';return;}
   list.innerHTML=entries.map(([k,v])=>`
     <div class="doc-card">
       <div class="doc-info">
-        <div class="doc-title-text">${v.fileName || (v.docNo + ' — ' + (v.company||'거래처'))}</div>
-        <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
+        <div class="doc-title-text">${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
+        <div class="doc-meta-text">${v.docNo||''} | ${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
         <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
@@ -1550,25 +1581,44 @@ function doLogout(){
 // Firebase Firestore 동기화
 // ════════════════════════════════════
 async function saveDoc(){
+  // 제목 입력 모달 먼저 띄우기
   const d=getFormData();
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
-  const fileName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
-  const data={...d,savedAt:new Date().toISOString(),fileName};
-  // 로컬 저장 먼저 (즉시 문서함에 반영)
+  const defaultTitle=firstItem?`${firstItem} 견적`:'견적';
+  const inp=document.getElementById('save-title-input');
+  inp.value='';
+  inp.placeholder=`예: ${defaultTitle}, 1차 견적, 수정본…`;
+  document.getElementById('save-title-preview').textContent=`저장명: ${company} — (제목 입력)`;
+  inp.oninput=()=>{
+    const t=inp.value.trim()||defaultTitle;
+    document.getElementById('save-title-preview').textContent=`저장명: ${company} — ${t}`;
+  };
+  openModal('modal-save-title');
+  setTimeout(()=>inp.focus(),100);
+}
+async function confirmSaveTitle(){
+  const d=getFormData();
+  const company=d.company||'거래처';
+  const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
+  const defaultTitle=firstItem?`${firstItem} 견적`:'견적';
+  const title=(document.getElementById('save-title-input').value.trim())||defaultTitle;
+  const fileName=`${company} — ${title}`;
+  // 고유 ID로 저장 (docNo 덮어쓰기 방지)
+  const saveId=d.docNo+'_'+Date.now();
+  const data={...d,savedAt:new Date().toISOString(),fileName,saveTitle:title,saveId};
+  closeModal('modal-save-title');
   localStorage.removeItem('htc_draft');
   setBadge('저장 중...');
-  // Firestore 저장
   try{
     const {doc,setDoc,collection}=window._fbFns;
     const db=window._db;
-    await setDoc(doc(collection(db,'quotes'),d.docNo),data);
+    await setDoc(doc(collection(db,'quotes'),saveId),data);
     setBadge('저장됨 ✓');
   }catch(e){
     setBadge('⚠️ 오프라인 저장');
     console.log('Firestore 저장 실패',e);
   }
-  // 거래처 자동 등록
   if(d.company){
     const custs=getCusts();
     const exists=custs.find(c=>c.company===d.company);
