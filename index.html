@@ -571,17 +571,19 @@ if('serviceWorker' in navigator){
       <div class="fg">
         <label>이메일</label>
         <div style="display:flex;gap:6px;align-items:center;width:100%">
-          <input id="c-email-id" type="text" placeholder="아이디" inputmode="email" class="fi" style="flex:2;min-width:0">
+          <input id="c-email-id" type="text" placeholder="아이디" inputmode="email" class="fi" style="flex:2;min-width:0" oninput="sched()">
           <span style="color:#888;flex-shrink:0;font-size:14px">@</span>
-          <select id="c-email-domain" onchange="toggleEmailDirect(this.value)" class="fi" style="flex:3;min-width:0">
-            <option value="naver.com">naver.com</option>
-            <option value="gmail.com">gmail.com</option>
-            <option value="daum.net">daum.net</option>
-            <option value="direct">직접입력</option>
-          </select>
+          <input id="c-email-domain" type="text" placeholder="도메인 직접입력" inputmode="email"
+            class="fi" style="flex:3;min-width:0" list="email-domain-list" oninput="sched()">
+          <datalist id="email-domain-list">
+            <option value="naver.com">
+            <option value="gmail.com">
+            <option value="daum.net">
+            <option value="hanmail.net">
+            <option value="kakao.com">
+            <option value="nate.com">
+          </datalist>
         </div>
-        <input id="c-email-domain-custom" type="text" placeholder="도메인 직접입력" inputmode="email" class="fi"
-          style="display:none;margin-top:6px;width:100%">
       </div>
       <input id="c-addr" type="text" style="display:none">
     </div>
@@ -888,34 +890,18 @@ function fmtTel(el){
 // ════════════════════════════════════
 // 이메일 도메인
 // ════════════════════════════════════
-function toggleEmailDirect(v){
-  const dc=document.getElementById('c-email-domain-custom');
-  dc.style.display=v==='direct'?'':'none';
-  if(v!=='direct')dc.value='';
-}
+function toggleEmailDirect(v){}
 function getEmail(){
   const id=document.getElementById('c-email-id').value.trim();
   if(!id)return'';
-  const domSel=document.getElementById('c-email-domain').value;
-  const dom=domSel==='direct'?document.getElementById('c-email-domain-custom').value.trim():domSel;
+  const dom=document.getElementById('c-email-domain').value.trim();
   return dom?id+'@'+dom:id;
 }
 function setEmail(email){
-  if(!email){document.getElementById('c-email-id').value='';return;}
+  if(!email){document.getElementById('c-email-id').value='';document.getElementById('c-email-domain').value='';return;}
   const parts=email.split('@');
   document.getElementById('c-email-id').value=parts[0]||'';
-  if(parts[1]){
-    const known=['naver.com','gmail.com','daum.net'];
-    const sel=document.getElementById('c-email-domain');
-    if(known.includes(parts[1])){
-      sel.value=parts[1];
-      document.getElementById('c-email-domain-custom').style.display='none';
-    }else{
-      sel.value='direct';
-      document.getElementById('c-email-domain-custom').style.display='';
-      document.getElementById('c-email-domain-custom').value=parts[1];
-    }
-  }
+  document.getElementById('c-email-domain').value=parts[1]||'';
 }
 
 // ════════════════════════════════════
@@ -1244,11 +1230,10 @@ function saveCust(){
     tel:document.getElementById('mc-tel').value,
     email:document.getElementById('mc-email').value,
     addr:document.getElementById('mc-addr').value};
-  const ex=_custsCache.findIndex(c=>c.company===name);
-  if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))_custsCache[ex]={..._custsCache[ex],...nc};else return;}
-  else _custsCache.push(nc);
+  const ex=custs.findIndex(c=>c.company===name);
+  if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))custs[ex]={...custs[ex],...nc};else return;}
+  else custs.push(nc);
   saveCustToFirestore(nc);
-  renderCustomers();
   closeModal('modal-save-cust');
   alert('저장되었습니다. (실시간 동기화 중...)');
 }
