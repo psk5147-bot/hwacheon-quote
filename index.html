@@ -1820,6 +1820,7 @@ let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
+  e.prompt();
   const btn = document.getElementById('install-btn');
   if(btn) btn.style.display = '';
 });
