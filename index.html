@@ -896,40 +896,82 @@ if('serviceWorker' in navigator){
 
 <!-- 거래명세서 발송 모달 -->
 <div class="modal-overlay" id="modal-dlv-send">
-  <div class="modal-box" style="max-width:480px;width:100%">
-    <h3 id="dlv-send-title">📧 거래명세서 발송</h3>
-
-    <!-- 발송 대상 정보 -->
-    <div style="background:#f0f6ff;border:1px solid #b8d0f0;border-radius:6px;padding:12px;margin-bottom:14px;font-size:12px;color:#1a3a5c">
-      <strong>📋 거래명세서:</strong> <span id="dlv-send-docno"></span> &nbsp;|&nbsp; <span id="dlv-send-company"></span>
+  <div class="modal-box" style="max-width:500px;width:100%;padding:0;overflow:hidden;border-radius:10px">
+    <!-- 헤더 -->
+    <div style="background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700">📤 거래명세서 발송</div>
+      <button onclick="closeModal('modal-dlv-send')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
     </div>
 
-    <!-- 수신자 편집 -->
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-      <div class="form-group">
-        <label style="font-size:11px;color:var(--muted);font-weight:700">담당자명</label>
-        <input id="dlv-send-person" type="text" placeholder="홍길동 구매팀장"
-          style="border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--font);font-size:13px;width:100%">
-      </div>
-      <div class="form-group" id="dlv-send-email-group">
-        <label style="font-size:11px;color:var(--muted);font-weight:700">수신 이메일 <span style="color:#c0392b">*</span></label>
-        <input id="dlv-send-email" type="email" placeholder="purchase@company.com" inputmode="email"
-          style="border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--font);font-size:13px;width:100%">
-        <div style="font-size:10px;color:#888;margin-top:3px">견적서에 등록된 이메일과 다른 경우 여기서 변경하세요</div>
-      </div>
-      <div class="form-group" id="dlv-send-tel-group">
-        <label style="font-size:11px;color:var(--muted);font-weight:700">수신 연락처 <span style="color:#6a1b9a">*</span></label>
-        <input id="dlv-send-tel" type="text" placeholder="010-0000-0000" inputmode="tel" maxlength="13"
-          oninput="fmtTel(this)"
-          style="border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--font);font-size:13px;width:100%">
-        <div style="font-size:10px;color:#888;margin-top:3px">문자 수신 번호 (구매팀 번호 등으로 변경 가능)</div>
-      </div>
+    <!-- 문서 정보 -->
+    <div style="background:#f0f6ff;border-bottom:1px solid #d0e4f7;padding:10px 20px;font-size:12px;color:#1a3a5c;display:flex;gap:10px;align-items:center">
+      <span>📋</span>
+      <span><strong id="dlv-send-company2"></strong> &nbsp;<span style="color:#888">|</span>&nbsp; <span id="dlv-send-docno2" style="color:#666"></span></span>
     </div>
 
-    <div class="modal-footer" style="gap:8px">
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+
+      <!-- 수신자 -->
+      <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:2px">👤 수신자 정보</div>
+        <div class="form-group">
+          <label style="font-size:11px;color:var(--muted);font-weight:600">담당자명</label>
+          <input id="dlv-send-person" type="text" placeholder="홍길동 구매팀장"
+            style="border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--font);font-size:13px;width:100%">
+        </div>
+        <div class="form-group">
+          <label style="font-size:11px;color:var(--muted);font-weight:600">이메일</label>
+          <input id="dlv-send-email" type="email" placeholder="purchase@company.com" inputmode="email"
+            style="border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--font);font-size:13px;width:100%">
+        </div>
+        <div class="form-group">
+          <label style="font-size:11px;color:var(--muted);font-weight:600">연락처</label>
+          <input id="dlv-send-tel" type="text" placeholder="010-0000-0000" inputmode="tel" maxlength="13"
+            oninput="fmtTel(this)"
+            style="border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--font);font-size:13px;width:100%">
+        </div>
+      </div>
+
+      <!-- 발송 방법 선택 -->
+      <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:2px">📬 발송 방법</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;transition:border-color .15s"
+          id="dlv-email-option">
+          <input type="checkbox" id="dlv-chk-email" onchange="dlvToggleSendOptions()" checked
+            style="width:16px;height:16px;cursor:pointer;accent-color:#1565c0">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:#1565c0">📧 이메일 발송</div>
+            <div style="font-size:11px;color:#888;margin-top:1px">PDF 첨부 링크를 이메일로 전송</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;transition:border-color .15s"
+          id="dlv-sms-option">
+          <input type="checkbox" id="dlv-chk-sms" onchange="dlvToggleSendOptions()"
+            style="width:16px;height:16px;cursor:pointer;accent-color:#6a1b9a">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:#6a1b9a">📱 문자 발송</div>
+            <div style="font-size:11px;color:#888;margin-top:1px">SMS로 발송 안내 문자 전송</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- 문자 내용 편집 (문자 체크시 표시) -->
+      <div id="dlv-sms-content-wrap" style="display:none;background:#faf4ff;border:1px solid #d4a8f0;border-radius:6px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#6a1b9a;margin-bottom:6px">📝 문자 내용 수정</div>
+        <textarea id="dlv-send-sms-text" rows="4"
+          style="width:100%;border:1px solid #d4a8f0;border-radius:4px;padding:8px 10px;font-family:var(--font);font-size:12px;resize:vertical;line-height:1.6"></textarea>
+        <div style="font-size:10px;color:#aaa;margin-top:4px">* 내용을 자유롭게 수정하세요</div>
+      </div>
+
+    </div>
+
+    <!-- 하단 버튼 -->
+    <div style="padding:12px 20px;border-top:1px solid var(--border);background:#fff;display:flex;justify-content:flex-end;gap:8px">
       <button class="btn-sm" onclick="closeModal('modal-dlv-send')">취소</button>
-      <button id="dlv-send-btn" class="btn-sm btn-primary" onclick="confirmDlvSend()"
-        style="padding:8px 20px;font-size:13px">발송</button>
+      <button id="dlv-send-confirm-btn" onclick="confirmDlvSend()"
+        style="background:#1a3a5c;color:#fff;border:1px solid #1a3a5c;border-radius:4px;padding:8px 22px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer">
+        📤 발송
+      </button>
     </div>
   </div>
 </div>
@@ -2360,49 +2402,64 @@ async function uploadDeliveryPdf(){
 // ════════════════════════════════════
 // 거래명세서 발송 모달
 // ════════════════════════════════════
-let _dlvSendMode = 'email'; // 'email' | 'sms' | 'both'
+let _dlvSendMode = 'email';
 
 function sendDeliveryEmail(){
   if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
-  _dlvSendMode='email';
-  _openDlvSendModal();
+  _openDlvSendModal('email');
 }
 
 function sendDeliverySMS(){
   if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
-  _dlvSendMode='sms';
-  _openDlvSendModal();
+  _openDlvSendModal('sms');
 }
 
-function _openDlvSendModal(){
-  const isEmail=_dlvSendMode==='email';
-  // 제목
-  document.getElementById('dlv-send-title').textContent = isEmail ? '📧 이메일 발송' : '📱 문자 발송';
+function _openDlvSendModal(mode){
+  const isGwajang=(_dlvData.manager||'').includes('과장');
+  const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
+
   // 문서 정보
-  document.getElementById('dlv-send-docno').textContent = document.getElementById('dlv-no').value||'';
-  document.getElementById('dlv-send-company').textContent = _dlvData.company||'';
-  // 수신자 기본값 채우기
+  document.getElementById('dlv-send-docno2').textContent = document.getElementById('dlv-no').value||'';
+  document.getElementById('dlv-send-company2').textContent = _dlvData.company||'';
+  // 수신자 기본값
   document.getElementById('dlv-send-person').value = _dlvData.person||'';
-  document.getElementById('dlv-send-email').value = _dlvData.email||'';
-  document.getElementById('dlv-send-tel').value = _dlvData.tel||'';
-  // 이메일/문자 필드 표시 제어
-  document.getElementById('dlv-send-email-group').style.display = isEmail ? '' : 'none';
-  document.getElementById('dlv-send-tel-group').style.display = !isEmail ? '' : 'none';
-  // 버튼 색상
-  const btn=document.getElementById('dlv-send-btn');
-  btn.style.background = isEmail ? '#1565c0' : '#6a1b9a';
-  btn.style.borderColor = isEmail ? '#1565c0' : '#6a1b9a';
-  btn.textContent = isEmail ? '📧 이메일 발송' : '📱 문자 발송';
+  document.getElementById('dlv-send-email').value  = _dlvData.email||'';
+  document.getElementById('dlv-send-tel').value    = _dlvData.tel||'';
+  // 체크박스 초기 상태
+  document.getElementById('dlv-chk-email').checked = (mode==='email');
+  document.getElementById('dlv-chk-sms').checked   = (mode==='sms');
+  // 기본 문자 내용
+  const defaultMsg=`[화천이티씨]\n거래명세서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
+  document.getElementById('dlv-send-sms-text').value = defaultMsg;
+  // 문자 내용 패널 토글
+  dlvToggleSendOptions();
   openModal('modal-dlv-send');
 }
 
-async function confirmDlvSend(){
-  const person = document.getElementById('dlv-send-person').value.trim();
-  const email  = document.getElementById('dlv-send-email').value.trim();
-  const tel    = document.getElementById('dlv-send-tel').value.trim();
+function dlvToggleSendOptions(){
+  const smsChecked = document.getElementById('dlv-chk-sms').checked;
+  const emailChecked = document.getElementById('dlv-chk-email').checked;
+  document.getElementById('dlv-sms-content-wrap').style.display = smsChecked ? '' : 'none';
+  // 옵션 카드 테두리 강조
+  document.getElementById('dlv-email-option').style.borderColor = emailChecked ? '#1565c0' : 'var(--border)';
+  document.getElementById('dlv-sms-option').style.borderColor   = smsChecked   ? '#6a1b9a' : 'var(--border)';
+  // 발송 버튼 텍스트
+  const both = emailChecked && smsChecked;
+  const btn  = document.getElementById('dlv-send-confirm-btn');
+  btn.textContent = both ? '📤 이메일 + 문자 발송' : emailChecked ? '📧 이메일 발송' : '📱 문자 발송';
+}
 
-  if(_dlvSendMode==='email' && !email){ alert('이메일 주소를 입력해주세요.'); return; }
-  if(_dlvSendMode==='sms'   && !tel)  { alert('연락처를 입력해주세요.'); return; }
+async function confirmDlvSend(){
+  const person   = document.getElementById('dlv-send-person').value.trim();
+  const email    = document.getElementById('dlv-send-email').value.trim();
+  const tel      = document.getElementById('dlv-send-tel').value.trim();
+  const smsText  = document.getElementById('dlv-send-sms-text').value.trim();
+  const doEmail  = document.getElementById('dlv-chk-email').checked;
+  const doSMS    = document.getElementById('dlv-chk-sms').checked;
+
+  if(!doEmail && !doSMS){ alert('이메일 또는 문자 중 하나 이상 선택해주세요.'); return; }
+  if(doEmail && !email) { alert('이메일 주소를 입력해주세요.'); return; }
+  if(doSMS   && !tel)   { alert('연락처를 입력해주세요.'); return; }
 
   closeModal('modal-dlv-send');
 
@@ -2413,37 +2470,35 @@ async function confirmDlvSend(){
   const vat=_dlvData.optVat!==false?Math.round(supply*.1):0;
   const total=supply+vat;
 
-  if(_dlvSendMode==='email'){
+  // ── 이메일 발송 ──
+  if(doEmail){
     setBadge('PDF 생성 중...');
     let pdfUrl='';
     try{ pdfUrl=await uploadDeliveryPdf(); }catch(e){ console.log('PDF 실패',e); }
-
     const params={
       to_email: email,
-      to_name: person||_dlvData.company||'',
-      company: _dlvData.company||'',
-      doc_no: document.getElementById('dlv-no').value,
+      to_name:  person||_dlvData.company||'',
+      company:  _dlvData.company||'',
+      doc_no:   document.getElementById('dlv-no').value,
       doc_date: document.getElementById('dlv-date').value,
-      total: comma(total),
-      manager: isGwajang?'문상록 과장':'문형록 대표',
+      total:    comma(total),
+      manager:  isGwajang?'문상록 과장':'문형록 대표',
       manager_mobile: mobile,
-      pdf_url: pdfUrl||'(링크 생성 실패 - 별도 전달 드립니다)',
+      pdf_url:  pdfUrl||'(링크 생성 실패 - 별도 전달 드립니다)',
     };
-    emailjs.send('service_1kdhkid','template_fdtn3vj',params)
-      .then(()=>{
-        setBadge('발송 완료 ✓');
-        alert('✅ 이메일 발송 완료!\n'+email);
-        // 문자도 발송?
-        if(tel){
-          const msg=`[화천이티씨]\n거래명세서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
-          if(confirm(`📱 ${tel} 으로 문자도 발송하시겠습니까?`)) _sendSMSRaw(tel,msg);
-        }
-      })
-      .catch(e=>{ setBadge('발송 실패'); alert('❌ 발송 실패: '+(e.text||e.message||e)); });
+    try{
+      await new Promise((res,rej)=>emailjs.send('service_1kdhkid','template_fdtn3vj',params).then(res).catch(rej));
+      setBadge('이메일 완료 ✓');
+      alert('✅ 이메일 발송 완료!\n'+email);
+    }catch(e){
+      setBadge('발송 실패');
+      alert('❌ 이메일 발송 실패: '+(e.text||e.message||e));
+    }
+  }
 
-  } else {
-    const msg=`[화천이티씨]\n거래명세서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
-    await _sendSMSRaw(tel, msg);
+  // ── 문자 발송 ──
+  if(doSMS){
+    await _sendSMSRaw(tel, smsText);
   }
 }
 
