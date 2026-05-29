@@ -95,6 +95,18 @@ window._checkDraft = function(){
       }
     });
   }catch(e){ console.log('거래처 리스너 실패', e); }
+
+  // Firestore 실시간 리스너 (deliveries)
+  try{
+    const qd = query(collection(db2,'deliveries'), orderBy('savedAt','desc'));
+    onSnapshot(qd, (snap) => {
+      _dlvCache = {};
+      snap.forEach(d => { _dlvCache['dlv_'+d.id] = d.data(); });
+      if(document.getElementById('panel-docs')?.classList.contains('active')){
+        if(typeof renderDlvDocs==='function') renderDlvDocs();
+      }
+    });
+  }catch(e){ console.log('거래명세서 리스너 실패', e); }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>화천이티씨 견적서</title>
@@ -258,19 +270,25 @@ table.item-table tbody tr:hover{background:#fafaf7}
 #print-area .company-info{font-size:7.5pt;color:#555;text-align:center;
   margin-top:8px;border-top:.5px solid #ccc;padding-top:5px}
 /* 문서함 */
-#panel-docs{padding:16px 20px}
-.docs-toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+#panel-docs{padding:0}
+.docs-toolbar{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;background:#fff}
 .docs-toolbar input{border:1px solid var(--border);border-radius:4px;
-  padding:6px 10px;font-family:var(--font);font-size:13px;flex:1;max-width:280px}
+  padding:6px 10px;font-family:var(--font);font-size:13px;flex:1;max-width:320px}
 .doc-list{display:flex;flex-direction:column;gap:8px}
 .doc-card{background:var(--card);border:1px solid var(--border);border-radius:6px;
-  padding:12px 16px;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
+  padding:10px 12px;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
 .doc-card:hover{border-color:var(--primary-light)}
-.doc-card .doc-info{flex:1}
-.doc-card .doc-title-text{font-weight:600;font-size:13px;margin-bottom:3px}
-.doc-card .doc-meta-text{font-size:11px;color:var(--muted)}
-.doc-card .doc-actions{display:flex;gap:6px}
-.empty-msg{text-align:center;color:var(--muted);padding:40px;font-size:13px}
+.doc-card.dlv-card:hover{border-color:#2d7a4f}
+.doc-card .doc-info{flex:1;min-width:0}
+.doc-card .doc-title-text{font-weight:600;font-size:12px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-card .doc-meta-text{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-card .doc-actions{display:flex;gap:4px;flex-shrink:0;margin-left:6px}
+.doc-card .doc-actions .btn-sm{font-size:11px;padding:4px 7px}
+.empty-msg{text-align:center;color:var(--muted);padding:30px 10px;font-size:12px}
+@media(max-width:600px){
+  #panel-docs .docs-grid{grid-template-columns:1fr!important}
+  #panel-docs .docs-grid>div:first-child{border-right:none!important;border-bottom:2px solid var(--border)}
+}
 /* 거래처 */
 #panel-customers{padding:16px 20px}
 .customer-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
@@ -704,10 +722,13 @@ if('serviceWorker' in navigator){
 <!-- 거래명세서 -->
 <div id="panel-delivery" class="tab-panel">
   <!-- 상단 액션 버튼 -->
-  <div id="delivery-actions" style="display:flex;border-bottom:1px solid var(--border)">
-    <button onclick="openDeliveryDocPicker()" style="background:#1a3a5c;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">📂 견적서에서 불러오기</button>
-    <button onclick="toggleDeliveryEdit()" id="btn-dlv-edit" style="background:#2d7a4f;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">✏️ 내용 수정</button>
-    <button onclick="printDelivery()" style="background:#c8922a;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🖨️ 인쇄 / PDF</button>
+  <div id="delivery-actions" style="display:flex;border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <button onclick="openDeliveryDocPicker()" style="background:#1a3a5c;color:#fff;border:none;flex:1;min-width:120px;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📂 불러오기</button>
+    <button onclick="toggleDeliveryEdit()" id="btn-dlv-edit" style="background:#2d7a4f;color:#fff;border:none;flex:1;min-width:120px;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">✏️ 내용 수정</button>
+    <button onclick="saveDelivery()" style="background:#546e7a;color:#fff;border:none;flex:1;min-width:100px;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">💾 저장</button>
+    <button onclick="sendDeliveryEmail()" style="background:#1565c0;color:#fff;border:none;flex:1;min-width:100px;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📧 이메일</button>
+    <button onclick="sendDeliverySMS()" style="background:#6a1b9a;color:#fff;border:none;flex:1;min-width:100px;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📱 문자</button>
+    <button onclick="printDelivery()" style="background:#c8922a;color:#fff;border:none;flex:1;min-width:100px;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">🖨️ 인쇄</button>
   </div>
 
   <!-- 기본 입력 (납품일/장소/번호) -->
@@ -788,10 +809,25 @@ if('serviceWorker' in navigator){
 <!-- 문서함 -->
 <div id="panel-docs" class="tab-panel">
   <div class="docs-toolbar">
-    <input type="text" id="doc-search" placeholder="🔍 문서 검색" oninput="renderDocs()">
+    <input type="text" id="doc-search" placeholder="🔍 거래처명 / 문서번호 검색" oninput="renderDocs();renderDlvDocs()">
     <button class="btn-sm" onclick="renderDocs()">새로고침</button>
   </div>
-  <div class="doc-list" id="doc-list"></div>
+  <div class="docs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:300px">
+    <!-- 견적서 컬럼 -->
+    <div style="border-right:2px solid var(--border)">
+      <div style="background:#1a3a5c;color:#fff;padding:8px 16px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">
+        📋 견적서 <span id="quote-count" style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 8px;font-size:11px"></span>
+      </div>
+      <div class="doc-list" id="doc-list" style="padding:10px 12px"></div>
+    </div>
+    <!-- 거래명세서 컬럼 -->
+    <div>
+      <div style="background:#2d7a4f;color:#fff;padding:8px 16px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">
+        🚚 거래명세서 <span id="dlv-count" style="background:rgba(255,255,255,.2);border-radius:10px;padding:1px 8px;font-size:11px"></span>
+      </div>
+      <div class="doc-list" id="dlv-list" style="padding:10px 12px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- 거래처 관리 -->
@@ -906,7 +942,7 @@ const COM={
 };
 
 let items=[],docId=null,autoTimer=null;
-let _docsCache={}, _custsCache=[];
+let _docsCache={}, _custsCache=[], _dlvCache={};
 
 // ════════════════════════════════════
 // 초기화
@@ -955,7 +991,7 @@ function showTab(name,btn){
     if(!document.getElementById('dlv-date').value)
       document.getElementById('dlv-date').value=new Date().toISOString().slice(0,10);
   }
-  if(name==='docs'){loadFirestoreDocs().then(renderDocs);}
+  if(name==='docs'){loadFirestoreDocs().then(()=>{renderDocs();renderDlvDocs();});loadFirestoreDeliveries().then(renderDlvDocs);}
   if(name==='customers'){loadFirestoreCusts().then(renderCustomers);}
 }
 
@@ -1311,21 +1347,50 @@ function renderDocs(){
   const docs=getDocs2();
   const list=document.getElementById('doc-list');
   const entries=Object.entries(docs)
-    .filter(([k,v])=>!q||v.docNo.toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q))
+    .filter(([k,v])=>!q||( (v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q) ))
     .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
-  if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 문서가 없습니다.</div>';return;}
+  const countEl=document.getElementById('quote-count');
+  if(countEl) countEl.textContent=entries.length+'건';
+  if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 견적서가 없습니다.</div>';return;}
   list.innerHTML=entries.map(([k,v])=>`
     <div class="doc-card">
       <div class="doc-info">
         <div class="doc-title-text">${v.fileName || (v.docNo + ' — ' + (v.company||'거래처'))}</div>
-        <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
+        <div class="doc-meta-text">${v.date||''} | ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">✏️ 수정</button>
-        <button class="btn-sm" style="background:#e8f4ec;color:#1a7a40;border-color:#a8d5b5" onclick="loadDocToDelivery('${k}')">📋 거래명세서</button>
+        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">✏️</button>
+        <button class="btn-sm" style="background:#e8f4ec;color:#1a7a40;border-color:#a8d5b5" onclick="loadDocToDelivery('${k}')">🚚</button>
         <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
       </div>
     </div>`).join('');
+}
+
+function renderDlvDocs(){
+  const q=(document.getElementById('doc-search').value||'').toLowerCase();
+  const docs=_dlvCache||{};
+  const list=document.getElementById('dlv-list');
+  if(!list)return;
+  const entries=Object.entries(docs)
+    .filter(([k,v])=>!q||( (v.dlvNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q) ))
+    .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  const countEl=document.getElementById('dlv-count');
+  if(countEl) countEl.textContent=entries.length+'건';
+  if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 거래명세서가 없습니다.</div>';return;}
+  list.innerHTML=entries.map(([k,v])=>{
+    const total=v.items?v.items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0):0;
+    const vat=v.optVat!==false?Math.round(total*.1):0;
+    return `<div class="doc-card dlv-card">
+      <div class="doc-info">
+        <div class="doc-title-text" style="color:#1a5c35">${v.company||'거래처'} — ${v.dlvNo||''}</div>
+        <div class="doc-meta-text">${v.dlvDate||''} | ${comma(total+vat)}원 | 저장: ${fmtDt(v.savedAt)}</div>
+      </div>
+      <div class="doc-actions">
+        <button class="btn-sm" style="background:#e8f4ec;color:#1a7a40;border-color:#a8d5b5" onclick="loadDlvDoc('${k}')">열기</button>
+        <button class="btn-sm btn-danger" onclick="delDlvDoc('${k}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function loadDoc(key){
   const docs=getDocs2();
@@ -2141,6 +2206,203 @@ async function saveCustToFirestore(cust){
     const {doc,setDoc,collection}=window._fbFns;
     await setDoc(doc(collection(window._db,'customers'),String(cust.id)),cust);
   }catch(e){console.log('거래처 저장 실패',e);}
+}
+
+// ════════════════════════════════════
+// 거래명세서 Firestore
+// ════════════════════════════════════
+async function loadFirestoreDeliveries(){
+  try{
+    const {collection,getDocs,query,orderBy}=window._fbFns;
+    const db=window._db;
+    if(!db)return;
+    const q=query(collection(db,'deliveries'),orderBy('savedAt','desc'));
+    const snap=await getDocs(q);
+    _dlvCache={};
+    snap.forEach(d=>{_dlvCache['dlv_'+d.id]=d.data();});
+  }catch(e){console.log('거래명세서 로드 실패',e);}
+}
+
+async function saveDelivery(){
+  if(!_dlvData){alert('먼저 견적서에서 불러와서 거래명세서를 생성해주세요.');return;}
+  const dlvNo=document.getElementById('dlv-no').value;
+  const dlvDate=document.getElementById('dlv-date').value;
+  const dlvPlace=document.getElementById('dlv-place').value;
+  if(!dlvNo){alert('거래명세서 번호가 없습니다. 먼저 불러오기 해주세요.');return;}
+  const data={
+    ..._dlvData,
+    dlvNo, dlvDate, dlvPlace,
+    savedAt:new Date().toISOString(),
+    fileName:`${_dlvData.company||'거래처'}_거래명세서_${dlvNo}`
+  };
+  try{
+    const {doc,setDoc,collection}=window._fbFns;
+    await setDoc(doc(collection(window._db,'deliveries'),dlvNo),data);
+    _dlvCache['dlv_'+dlvNo]=data;
+    renderDlvDocs();
+    alert('✅ 거래명세서 저장 완료!\n'+data.fileName);
+  }catch(e){alert('❌ 저장 실패: '+e.message);}
+}
+
+function loadDlvDoc(key){
+  const d=_dlvCache[key];
+  if(!d)return;
+  // 입력 필드 복원
+  document.getElementById('dlv-date').value=d.dlvDate||'';
+  document.getElementById('dlv-place').value=d.dlvPlace||'';
+  document.getElementById('dlv-no').value=d.dlvNo||'';
+  // 거래명세서 탭으로 이동 + 빌드
+  const btn=Array.from(document.querySelectorAll('#appbar .tabs button')).find(b=>b.textContent.includes('거래명세서'));
+  showTab('delivery',btn);
+  buildDeliveryPreview(d);
+}
+
+async function delDlvDoc(key){
+  if(!confirm('거래명세서를 삭제하시겠습니까?'))return;
+  const dlvNo=key.replace('dlv_','');
+  try{
+    const {doc,deleteDoc,collection}=window._fbFns;
+    await deleteDoc(doc(collection(window._db,'deliveries'),dlvNo));
+    delete _dlvCache[key];
+    renderDlvDocs();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+// ════════════════════════════════════
+// 거래명세서 PDF → Cloudinary 공통 함수
+// ════════════════════════════════════
+async function buildDeliveryPdfBlob(){
+  // 미리보기가 있는지 확인
+  const area=document.getElementById('delivery-print-area');
+  const txt=area.innerText||'';
+  if(!txt.trim()||txt.includes('견적서에서 불러오기')) throw new Error('거래명세서를 먼저 생성해주세요.');
+
+  const {jsPDF}=window.jspdf;
+  const viewportMeta=document.querySelector('meta[name=viewport]');
+  const prevViewport=viewportMeta.content;
+  viewportMeta.content='width=1024';
+  await new Promise(r=>setTimeout(r,300));
+  const prevStyle=area.getAttribute('style')||'';
+  area.style.transform='none';
+  area.style.width='794px';
+  await new Promise(r=>setTimeout(r,300));
+  const canvas=await html2canvas(area,{scale:3,useCORS:true,allowTaint:true,imageTimeout:0,backgroundColor:'#ffffff',width:794,windowWidth:1024});
+  area.setAttribute('style',prevStyle);
+  viewportMeta.content=prevViewport;
+  const imgData=canvas.toDataURL('image/jpeg',0.95);
+  const pdf=new jsPDF('p','mm','a4');
+  const pageW=pdf.internal.pageSize.getWidth();
+  const pageH=pdf.internal.pageSize.getHeight();
+  const imgH=(canvas.height*pageW)/canvas.width;
+  if(imgH<=pageH){pdf.addImage(imgData,'JPEG',0,0,pageW,imgH);}
+  else{let y=0;while(y<imgH){pdf.addImage(imgData,'JPEG',0,-y,pageW,imgH);y+=pageH;if(y<imgH)pdf.addPage();}}
+  return pdf.output('blob');
+}
+
+async function uploadDeliveryPdf(){
+  const pdfBlob=await buildDeliveryPdfBlob();
+  const CLOUD_NAME='dlehtyeg6';
+  const UPLOAD_PRESET='hwacheon_quotes';
+  const ts=Date.now();
+  const dlvNo=document.getElementById('dlv-no').value||'DL';
+  const company=_dlvData?.company||'거래처';
+  const publicId=`deliveries/${dlvNo}_${company}_거래명세서_${ts}`;
+  const formData=new FormData();
+  formData.append('file',pdfBlob,'delivery.pdf');
+  formData.append('upload_preset',UPLOAD_PRESET);
+  formData.append('public_id',publicId);
+  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,{method:'POST',body:formData});
+  const json=await res.json();
+  if(json.secure_url) return json.secure_url;
+  throw new Error('Cloudinary 업로드 실패');
+}
+
+async function sendDeliveryEmail(){
+  if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
+  const email=_dlvData.email||'';
+  const company=_dlvData.company||'';
+  if(!email){
+    const input=prompt('수신 이메일 주소를 입력해주세요:','');
+    if(!input)return;
+    _dlvData.email=input.trim();
+  }
+  if(!confirm(`${_dlvData.email} 으로 거래명세서를 발송하시겠습니까?\n\n※ PDF 생성에 5~10초 소요됩니다.`))return;
+  setBadge('PDF 생성 중...');
+
+  const items=_dlvData.items||[];
+  const supply=items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0);
+  const vat=_dlvData.optVat!==false?Math.round(supply*.1):0;
+  const total=supply+vat;
+  const isGwajang=(_dlvData.manager||'').includes('과장');
+  const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
+
+  let pdfUrl='';
+  try{
+    setBadge('PDF 업로드 중...');
+    pdfUrl=await uploadDeliveryPdf();
+  }catch(e){console.log('PDF 실패',e);}
+
+  const params={
+    to_email:_dlvData.email,
+    to_name:_dlvData.person||company,
+    company,
+    doc_no:document.getElementById('dlv-no').value,
+    doc_date:document.getElementById('dlv-date').value,
+    total:comma(total),
+    manager:isGwajang?'문상록 과장':'문형록 대표',
+    manager_mobile:mobile,
+    pdf_url:pdfUrl||'(링크 생성 실패 - 별도 전달 드립니다)',
+  };
+
+  emailjs.send('service_1kdhkid','template_fdtn3vj',params)
+    .then(()=>{
+      setBadge('발송 완료 ✓');
+      alert('✅ 이메일 발송 완료!\n'+_dlvData.email);
+      if(_dlvData.tel){
+        const from='01054246147';
+        const msg=`[화천이티씨]\n거래명세서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
+        if(confirm(`📱 문자도 발송하시겠습니까?\n\n수신: ${_dlvData.tel}\n\n${msg}`)){
+          _sendSMSRaw(_dlvData.tel,msg);
+        }
+      }
+    })
+    .catch(e=>{setBadge('발송 실패');alert('❌ 발송 실패: '+(e.text||e.message||e));});
+}
+
+async function sendDeliverySMS(){
+  if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
+  let tel=_dlvData.tel||'';
+  if(!tel){
+    tel=prompt('수신 연락처를 입력해주세요:','');
+    if(!tel)return;
+  }
+  const isGwajang=(_dlvData.manager||'').includes('과장');
+  const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
+  const msg=`[화천이티씨]\n거래명세서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
+  if(!confirm(`${tel} 으로 문자를 발송하시겠습니까?\n\n${msg}`))return;
+  await _sendSMSRaw(tel,msg);
+}
+
+async function _sendSMSRaw(tel,msg){
+  const API_KEY='NCSFE0G6RDWZYKWE';
+  const API_SECRET='VFP7K7WMPKQYPWZ8ZTJW8CYCUIPQTAA4';
+  const from='01054246147';
+  const date=new Date().toISOString();
+  const salt=Math.random().toString(36).substring(2,12);
+  const enc=new TextEncoder();
+  const keyData=await crypto.subtle.importKey('raw',enc.encode(API_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sig=await crypto.subtle.sign('HMAC',keyData,enc.encode(date+salt));
+  const signature=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  try{
+    const res=await fetch('https://api.coolsms.co.kr/messages/v4/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`HMAC-SHA256 apiKey=${API_KEY}, date=${date}, salt=${salt}, signature=${signature}`},
+      body:JSON.stringify({message:{to:tel.replace(/-/g,''),from,text:msg}}),
+    });
+    const json=await res.json();
+    if(res.ok) alert('✅ 문자 발송 완료!\n'+tel);
+    else alert('❌ 문자 발송 실패: '+(json.errorMessage||JSON.stringify(json)));
+  }catch(e){alert('❌ 문자 오류: '+e.message);}
 }
 
 // ════════════════════════════════════
