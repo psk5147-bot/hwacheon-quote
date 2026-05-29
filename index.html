@@ -778,14 +778,29 @@ if('serviceWorker' in navigator){
 
 <!-- 거래명세서 견적서 선택 모달 -->
 <div class="modal-overlay" id="modal-delivery-picker">
-  <div class="modal-box" style="max-width:560px;width:100%">
-    <h3>📂 견적서 선택</h3>
-    <input type="text" id="dlv-picker-search" placeholder="🔍 거래처명 또는 문서번호 검색"
-      style="width:100%;border:1px solid var(--border);border-radius:4px;padding:7px 10px;
-      margin-bottom:10px;font-family:var(--font);font-size:13px;outline:none"
-      oninput="renderDeliveryPicker()">
-    <div id="dlv-picker-list" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
-    <div class="modal-footer"><button class="btn-sm" onclick="closeModal('modal-delivery-picker')">닫기</button></div>
+  <div class="modal-box" style="max-width:580px;width:100%;padding:0;overflow:hidden;border-radius:10px">
+    <!-- 모달 헤더 -->
+    <div style="background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700">📂 견적서 선택</div>
+      <button onclick="closeModal('modal-delivery-picker')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <!-- 검색창 -->
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#f8f7f4">
+      <div style="position:relative">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px">🔍</span>
+        <input type="text" id="dlv-picker-search" placeholder="거래처명 또는 문서번호 검색"
+          style="width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px 8px 32px;
+          font-family:var(--font);font-size:13px;outline:none;background:#fff"
+          oninput="renderDeliveryPicker()">
+      </div>
+      <div id="dlv-picker-count" style="font-size:11px;color:var(--muted);margin-top:6px;padding-left:2px"></div>
+    </div>
+    <!-- 목록 -->
+    <div id="dlv-picker-list" style="max-height:400px;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:#f4f4f0"></div>
+    <!-- 하단 -->
+    <div style="padding:10px 16px;border-top:1px solid var(--border);background:#fff;text-align:right">
+      <button class="btn-sm" onclick="closeModal('modal-delivery-picker')">닫기</button>
+    </div>
   </div>
 </div>
 
@@ -1276,34 +1291,59 @@ function loadDocToDelivery(key){
   buildDeliveryPreview(d);
 }
 
-function openDeliveryDocPicker(){
+async function openDeliveryDocPicker(){
   document.getElementById('dlv-picker-search').value='';
-  renderDeliveryPicker();
+  document.getElementById('dlv-picker-count').textContent='';
+  document.getElementById('dlv-picker-list').innerHTML=
+    '<div style="text-align:center;padding:30px;color:#aaa;font-size:13px">⏳ 문서 불러오는 중...</div>';
   openModal('modal-delivery-picker');
+  // Firestore 최신 데이터 보장
+  await loadFirestoreDocs();
+  renderDeliveryPicker();
 }
 
 function renderDeliveryPicker(){
   const q=(document.getElementById('dlv-picker-search').value||'').toLowerCase();
   const docs=getDocs2();
   const list=document.getElementById('dlv-picker-list');
-  const entries=Object.entries(docs)
-    .filter(([k,v])=>!q||(v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q))
-    .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  const countEl=document.getElementById('dlv-picker-count');
+  const all=Object.entries(docs).sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  const entries=all.filter(([k,v])=>!q||(v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q));
+  
+  // 건수 표시
+  if(q) countEl.textContent=`검색결과 ${entries.length}건 / 전체 ${all.length}건`;
+  else countEl.textContent=`전체 ${all.length}건 · 최근 작성순`;
+
   if(!entries.length){
-    list.innerHTML='<div class="empty-msg">저장된 문서가 없습니다.</div>';return;
+    list.innerHTML=`<div style="text-align:center;padding:40px;color:#bbb;font-size:13px">${q?'검색 결과가 없습니다':'저장된 문서가 없습니다'}</div>`;
+    return;
   }
   list.innerHTML=entries.map(([k,v])=>{
-    const total=v.items?v.items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0):0;
-    return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;
-      display:flex;justify-content:space-between;align-items:center;gap:8px;
-      background:#fff;cursor:pointer;transition:border-color .15s"
-      onmouseover="this.style.borderColor='#2d5f8a'" onmouseout="this.style.borderColor='var(--border)'"
+    const items=v.items||[];
+    const supply=items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0);
+    const vat=v.optVat!==false?Math.round(supply*.1):0;
+    const total=supply+vat;
+    const itemNames=items.slice(0,2).map(it=>it.name).filter(Boolean).join(', ')+(items.length>2?` 외 ${items.length-2}건`:'');
+    const dateStr=v.date||'';
+    return `<div style="border:1px solid #ddd;border-radius:8px;padding:12px 14px;
+      background:#fff;cursor:pointer;transition:all .15s;active:transform:scale(.98)"
+      onmouseover="this.style.borderColor='#1a3a5c';this.style.background='#f0f6ff'"
+      onmouseout="this.style.borderColor='#ddd';this.style.background='#fff'"
       onclick="closeModal('modal-delivery-picker');loadDocToDelivery('${k}')">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.fileName||(v.docNo+' — '+(v.company||'거래처'))}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${v.date||''} | 담당: ${v.manager||'-'} | ${comma(total)}원</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="font-weight:700;font-size:13px;color:#1a3a5c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.company||'(거래처 없음)'}</span>
+            <span style="font-size:10px;color:#888;background:#f0ede6;padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0">${v.docNo||''}</span>
+          </div>
+          ${itemNames?`<div style="font-size:11px;color:#555;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${itemNames}</div>`:''}
+          <div style="font-size:11px;color:#999">${dateStr} · 담당: ${v.manager||'-'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:13px;color:#1a3a5c">${comma(total)}원</div>
+          <div style="font-size:10px;color:#aaa;margin-top:2px">공급 ${comma(supply)}</div>
+        </div>
       </div>
-      <div style="background:#1a3a5c;color:#fff;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0">선택</div>
     </div>`;
   }).join('');
 }
