@@ -1239,7 +1239,8 @@ function renderDocs(){
         <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
+        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">✏️ 수정</button>
+        <button class="btn-sm" style="background:#e8f4ec;color:#1a7a40;border-color:#a8d5b5" onclick="loadDocToDelivery('${k}')">📋 거래명세서</button>
         <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
       </div>
     </div>`).join('');
@@ -1247,6 +1248,19 @@ function renderDocs(){
 function loadDoc(key){
   const docs=getDocs2();
   if(docs[key]){setFormData(docs[key]);showTab('quote',document.querySelector('#appbar .tabs button'));}
+}
+function loadDocToDelivery(key){
+  const docs=getDocs2();
+  if(!docs[key])return;
+  const d=docs[key];
+  // 납품일 오늘로 초기화
+  document.getElementById('dlv-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('dlv-place').value='';
+  document.getElementById('dlv-no').value='';
+  // 거래명세서 탭으로 이동 후 바로 빌드
+  const btn=Array.from(document.querySelectorAll('#appbar .tabs button')).find(b=>b.textContent.includes('거래명세서'));
+  showTab('delivery',btn);
+  buildDeliveryPreview(d);
 }
 async function delDoc(key){
   if(!confirm('이 문서를 삭제하시겠습니까?'))return;
@@ -1547,8 +1561,9 @@ function buildPreview(){
 // ════════════════════════════════════
 // 거래명세서
 // ════════════════════════════════════
-function buildDeliveryPreview(){
-  const d=getFormData();
+function buildDeliveryPreview(docData){
+  // docData가 전달되면 그 데이터 사용, 없으면 현재 폼에서 읽기
+  const d = docData || getFormData();
   if(!d.company&&(!d.items||!d.items.length)){
     alert('먼저 견적서 작성 탭에서 거래처와 품목을 입력해주세요.');return;
   }
