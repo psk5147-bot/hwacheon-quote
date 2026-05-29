@@ -704,7 +704,7 @@ if('serviceWorker' in navigator){
 <!-- 거래명세서 -->
 <div id="panel-delivery" class="tab-panel">
   <div id="delivery-actions" style="display:flex;border-bottom:1px solid var(--border)">
-    <button onclick="buildDeliveryPreview()" style="background:#1a3a5c;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🔄 견적서에서 불러오기</button>
+    <button onclick="openDeliveryDocPicker()" style="background:#1a3a5c;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">📂 견적서에서 불러오기</button>
     <button onclick="printDelivery()" style="background:#c8922a;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🖨️ 인쇄 / PDF</button>
   </div>
   <!-- 거래명세서 추가 입력 -->
@@ -773,6 +773,19 @@ if('serviceWorker' in navigator){
     <input type="text" id="cust-q" placeholder="검색" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 10px;margin-bottom:10px;font-family:var(--font)" oninput="renderCustSearch()">
     <div id="cust-list" style="max-height:260px;overflow-y:auto"></div>
     <div class="modal-footer"><button class="btn-sm" onclick="closeModal('modal-load-cust')">닫기</button></div>
+  </div>
+</div>
+
+<!-- 거래명세서 견적서 선택 모달 -->
+<div class="modal-overlay" id="modal-delivery-picker">
+  <div class="modal-box" style="max-width:560px;width:100%">
+    <h3>📂 견적서 선택</h3>
+    <input type="text" id="dlv-picker-search" placeholder="🔍 거래처명 또는 문서번호 검색"
+      style="width:100%;border:1px solid var(--border);border-radius:4px;padding:7px 10px;
+      margin-bottom:10px;font-family:var(--font);font-size:13px;outline:none"
+      oninput="renderDeliveryPicker()">
+    <div id="dlv-picker-list" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    <div class="modal-footer"><button class="btn-sm" onclick="closeModal('modal-delivery-picker')">닫기</button></div>
   </div>
 </div>
 
@@ -1262,6 +1275,38 @@ function loadDocToDelivery(key){
   showTab('delivery',btn);
   buildDeliveryPreview(d);
 }
+
+function openDeliveryDocPicker(){
+  document.getElementById('dlv-picker-search').value='';
+  renderDeliveryPicker();
+  openModal('modal-delivery-picker');
+}
+
+function renderDeliveryPicker(){
+  const q=(document.getElementById('dlv-picker-search').value||'').toLowerCase();
+  const docs=getDocs2();
+  const list=document.getElementById('dlv-picker-list');
+  const entries=Object.entries(docs)
+    .filter(([k,v])=>!q||(v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q))
+    .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  if(!entries.length){
+    list.innerHTML='<div class="empty-msg">저장된 문서가 없습니다.</div>';return;
+  }
+  list.innerHTML=entries.map(([k,v])=>{
+    const total=v.items?v.items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0):0;
+    return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;
+      display:flex;justify-content:space-between;align-items:center;gap:8px;
+      background:#fff;cursor:pointer;transition:border-color .15s"
+      onmouseover="this.style.borderColor='#2d5f8a'" onmouseout="this.style.borderColor='var(--border)'"
+      onclick="closeModal('modal-delivery-picker');loadDocToDelivery('${k}')">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.fileName||(v.docNo+' — '+(v.company||'거래처'))}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${v.date||''} | 담당: ${v.manager||'-'} | ${comma(total)}원</div>
+      </div>
+      <div style="background:#1a3a5c;color:#fff;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0">선택</div>
+    </div>`;
+  }).join('');
+}
 async function delDoc(key){
   if(!confirm('이 문서를 삭제하시겠습니까?'))return;
   const docNo=key.replace('htc_doc_','');
@@ -1704,41 +1749,23 @@ function buildDeliveryPreview(docData){
       </table>
     </div>
 
-    <!-- ⑤ 수령확인란 + 서명란 -->
-    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:stretch">
-      <!-- 수령확인란 -->
-      <div style="flex:1;border:.5px solid #c5cad6;border-radius:2px;overflow:hidden">
-        <div style="background:#c8922a;color:#fff;font-weight:700;font-size:8pt;padding:5px 10px;text-align:center">수 령 확 인</div>
-        <div style="padding:10px;font-size:8pt;color:#555;min-height:60px">
-          <div style="margin-bottom:6px">위 물품을 정히 수령하였음을 확인합니다.</div>
-          <div style="display:flex;gap:10px;margin-top:8px">
-            <div style="flex:1">수령일: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-          </div>
-          <div style="display:flex;gap:10px;margin-top:6px">
-            <div style="flex:1">서 명:&nbsp;</div>
-            <div style="flex:1;border-bottom:.5px solid #999;min-width:80px">&nbsp;</div>
-            <div style="font-size:7.5pt;color:#aaa">(인)</div>
-          </div>
-        </div>
-      </div>
-      <!-- 서명란 -->
-      <div style="width:270px;flex-shrink:0">
-        <table style="border-collapse:collapse;font-size:8.5pt;table-layout:fixed;width:100%">
-          <colgroup><col style="width:90px"><col style="width:90px"><col style="width:90px"></colgroup>
-          <tr>
-            <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">담 당</td>
-            <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">${isGwajang?'과 장':'대 표'}</td>
-            <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">확 인</td>
-          </tr>
-          <tr>
-            <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
-            <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
-              <img style="width:${isGwajang?36:46}px;height:${isGwajang?36:46}px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
-            </td>
-            <td style="border:.5px solid #c5cad6;height:70px"></td>
-          </tr>
-        </table>
-      </div>
+    <!-- ⑤ 서명란 -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <table style="border-collapse:collapse;font-size:8.5pt;table-layout:fixed;width:270px">
+        <colgroup><col style="width:90px"><col style="width:90px"><col style="width:90px"></colgroup>
+        <tr>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">담 당</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">${isGwajang?'과 장':'대 표'}</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">확 인</td>
+        </tr>
+        <tr>
+          <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
+          <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
+            <img style="width:${isGwajang?36:46}px;height:${isGwajang?36:46}px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
+          </td>
+          <td style="border:.5px solid #c5cad6;height:70px"></td>
+        </tr>
+      </table>
     </div>
 
     <!-- ⑥ 결재조건 -->
