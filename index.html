@@ -10,12 +10,7 @@
 window._checkDraft = function(){
   const draft = localStorage.getItem('htc_draft');
   if(draft){
-    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-      if(typeof loadDraft==='function') loadDraft();
-    }else{
-      localStorage.removeItem('htc_draft');
-      if(typeof newDoc==='function') newDoc();
-    }
+    if(typeof loadDraft==='function') loadDraft();
   }
 };
 </script>
@@ -88,25 +83,36 @@ window._checkDraft = function(){
   // Firestore 실시간 리스너 (customers)
   try{
     onSnapshot(collection(db2,'customers'), (snap) => {
-      _custsCache = [];
-      snap.forEach(d => { _custsCache.push(d.data()); });
+      const raw = [];
+      snap.forEach(d => { raw.push(d.data()); });
+      // 업체명 기준 중복 제거 (id 큰 것 = 최근 저장본만 유지)
+      const seen = {};
+      raw.sort((a,b)=>b.id-a.id).forEach(c=>{
+        const key=(c.company||'').trim();
+        if(!seen[key]) { seen[key]=true; _custsCache.push(c); }
+      });
+      // 중복 항목 Firestore에서 자동 삭제
+      const toDelete=raw.filter(c=>{
+        const key=(c.company||'').trim();
+        return !seen[key+'_kept'];
+      });
+      // seen에 kept 표시해서 첫번째만 유지
+      const kept={};
+      _custsCache=[];
+      raw.sort((a,b)=>b.id-a.id).forEach(c=>{
+        const key=(c.company||'').trim();
+        if(!kept[key]){kept[key]=true;_custsCache.push(c);}
+        else{
+          // 중복 - Firestore에서 삭제
+          window._fbFns?.deleteDoc?.(window._fbFns.doc(collection(db2,'customers'),String(c.id)))
+            .catch(()=>{});
+        }
+      });
       if(document.getElementById('panel-customers')?.classList.contains('active')){
         if(typeof renderCustomers==='function') renderCustomers();
       }
     });
   }catch(e){ console.log('거래처 리스너 실패', e); }
-
-  // Firestore 실시간 리스너 (deliveries)
-  try{
-    const qd = query(collection(db2,'deliveries'), orderBy('savedAt','desc'));
-    onSnapshot(qd, (snap) => {
-      _dlvCache = {};
-      snap.forEach(d => { _dlvCache['dlv_'+d.id] = d.data(); });
-      if(document.getElementById('panel-docs')?.classList.contains('active')){
-        if(typeof renderDlvDocs==='function') renderDlvDocs();
-      }
-    });
-  }catch(e){ console.log('거래명세서 리스너 실패', e); }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>화천이티씨 견적서</title>
@@ -124,27 +130,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
 .appbar-right{display:flex;gap:6px;align-items:center}
 #appbar .logo{font-size:15px;font-weight:700;letter-spacing:-.3px}
 #appbar .logo span{color:var(--accent-light)}
-#appbar .tabs{display:flex;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;scrollbar-width:none}
+#appbar .tabs{display:flex;gap:0;border-top:1px solid rgba(255,255,255,.15);overflow-x:auto;scrollbar-width:none}
 #appbar .tabs::-webkit-scrollbar{display:none}
-.tab-group{display:flex;flex:1;min-width:0;align-items:stretch}
-.tab-group-quote{background:rgba(37,99,235,.35)}
-.tab-group-delivery{background:rgba(180,110,20,.35)}
-.tab-group-manage{background:rgba(30,100,60,.35)}
-.tab-group-label{display:flex;align-items:center;justify-content:center;
-  width:80px;min-width:80px;max-width:80px;
-  font-size:14px;font-weight:700;white-space:nowrap;flex-shrink:0;letter-spacing:-.2px;cursor:default}
-.tab-group-quote .tab-group-label{background:#2563eb;color:#fff}
-.tab-group-delivery .tab-group-label{background:#c8922a;color:#fff}
-.tab-group-manage .tab-group-label{background:#2d7a4f;color:#fff}
-#appbar .tabs button{flex:1;background:transparent;border:none;border-bottom:3px solid transparent;
-  color:rgba(255,255,255,.6);padding:0 14px;height:42px;cursor:pointer;font-family:var(--font);
-  font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;min-width:0}
-#appbar .tabs button:hover:not(.active){color:#fff;background:rgba(255,255,255,.08)}
-#appbar .tabs button.active{color:#fff;font-weight:700}
-.tab-group-quote button.active{border-bottom-color:#fff;background:rgba(255,255,255,.15)}
-.tab-group-delivery button.active{border-bottom-color:#fff;background:rgba(255,255,255,.15)}
-.tab-group-manage button.active{border-bottom-color:#fff;background:rgba(255,255,255,.15)}
-.tab-divider{width:1px;background:rgba(255,255,255,.2);flex-shrink:0}
+#appbar .tabs button{background:transparent;border:none;color:rgba(255,255,255,.7);
+  padding:0 16px;height:40px;cursor:pointer;font-family:var(--font);font-size:13px;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;flex-shrink:0}
+#appbar .tabs button.active,#appbar .tabs button:hover{color:#fff;border-bottom-color:var(--accent-light)}
 .appbar-right{display:flex;gap:5px;align-items:center;flex-shrink:0}
 .ab-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
   color:#fff;padding:6px 10px;border-radius:5px;cursor:pointer;font-family:var(--font);
@@ -157,6 +148,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
   overflow:hidden;text-overflow:ellipsis;max-width:60px}
 .tab-panel{display:none}.tab-panel.active{display:block}
 #panel-quote{padding:12px 14px;max-width:1100px;margin:0 auto}
+#panel-delivery{padding:0}
 /* 새 폼 그룹 */
 .fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .fg label{font-size:11px;color:var(--muted);font-weight:600}
@@ -285,25 +277,19 @@ table.item-table tbody tr:hover{background:#fafaf7}
 #print-area .company-info{font-size:7.5pt;color:#555;text-align:center;
   margin-top:8px;border-top:.5px solid #ccc;padding-top:5px}
 /* 문서함 */
-#panel-docs{padding:0}
-.docs-toolbar{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;background:#fff}
+#panel-docs{padding:16px 20px}
+.docs-toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
 .docs-toolbar input{border:1px solid var(--border);border-radius:4px;
-  padding:6px 10px;font-family:var(--font);font-size:13px;flex:1;max-width:320px}
+  padding:6px 10px;font-family:var(--font);font-size:13px;flex:1;max-width:280px}
 .doc-list{display:flex;flex-direction:column;gap:8px}
 .doc-card{background:var(--card);border:1px solid var(--border);border-radius:6px;
-  padding:10px 12px;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
+  padding:12px 16px;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
 .doc-card:hover{border-color:var(--primary-light)}
-.doc-card.dlv-card:hover{border-color:#2d7a4f}
-.doc-card .doc-info{flex:1;min-width:0}
-.doc-card .doc-title-text{font-weight:600;font-size:12px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.doc-card .doc-meta-text{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.doc-card .doc-actions{display:flex;gap:4px;flex-shrink:0;margin-left:6px}
-.doc-card .doc-actions .btn-sm{font-size:11px;padding:4px 7px}
-.empty-msg{text-align:center;color:var(--muted);padding:30px 10px;font-size:12px}
-@media(max-width:600px){
-  #panel-docs .docs-grid{grid-template-columns:1fr!important}
-  #panel-docs .docs-grid>div:first-child{border-right:none!important;border-bottom:2px solid var(--border)}
-}
+.doc-card .doc-info{flex:1}
+.doc-card .doc-title-text{font-weight:600;font-size:13px;margin-bottom:3px}
+.doc-card .doc-meta-text{font-size:11px;color:var(--muted)}
+.doc-card .doc-actions{display:flex;gap:6px}
+.empty-msg{text-align:center;color:var(--muted);padding:40px;font-size:13px}
 /* 거래처 */
 #panel-customers{padding:16px 20px}
 .customer-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
@@ -329,7 +315,6 @@ table.item-table tbody tr:hover{background:#fafaf7}
   #panel-docs,
   #panel-customers,
   #panel-quote,
-  #panel-delivery,
   #panel-preview > div:first-child,
   .modal-overlay { display:none!important }
 
@@ -532,37 +517,25 @@ if('serviceWorker' in navigator){
     <div class="logo">화천<span>ETC</span> 견적서</div>
     <div class="appbar-right">
       <span id="autosave-badge">● 저장됨</span>
-      <button class="ab-btn ab-save" onclick="smartSave()">💾 견적서 저장</button>
+      <button class="ab-btn ab-save" onclick="smartSave()">💾 저장</button>
+      <button class="ab-btn" onclick="newDoc()">＋ 새 문서</button>
+
       <button id="install-btn" onclick="installApp()" class="ab-btn ab-install" style="display:none">📲</button>
     </div>
   </div>
   <div class="tabs">
-    <div class="tab-group tab-group-quote">
-      <span class="tab-group-label">견적서</span>
-      <button class="active" onclick="showTab('quote',this)">작성</button>
-      <button onclick="showTab('preview',this)">미리보기</button>
-    </div>
-    <div class="tab-divider"></div>
-    <div class="tab-group tab-group-delivery">
-      <span class="tab-group-label">거래명세서</span>
-      <button onclick="showTab('delivery',this)">작성</button>
-      <button onclick="showTab('dlvpreview',this)">미리보기</button>
-    </div>
-    <div class="tab-divider"></div>
-    <div class="tab-group tab-group-manage">
-      <span class="tab-group-label">관리</span>
-      <button onclick="showTab('docs',this)">문서함</button>
-      <button onclick="showTab('customers',this)">거래처</button>
-    </div>
+    <button class="active" onclick="showTab('quote',this)">견적서</button>
+    <button onclick="showTab('delivery',this)">거래명세서</button>
+    <button onclick="showTab('docs',this)">문서함</button>
+    <button onclick="showTab('customers',this)">거래처 관리</button>
   </div>
 </div>
 
 <!-- 견적서 작성 -->
 <div id="panel-quote" class="tab-panel active">
   <div style="display:flex;border-bottom:1px solid var(--border)">
-    <button onclick="newDoc()" style="background:#37474f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📄 새 문서</button>
-    <button onclick="openLoadDocModal()" style="background:#1a3a5c;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📂 불러오기</button>
-    <button onclick="openEditQuote()" id="btn-quote-edit" style="background:#2d7a4f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">✏️ 내용 수정</button>
+    <button onclick="openLoadDocModal()" style="flex:1;background:#1a3a5c;color:#fff;border:none;padding:13px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">📂 문서함에서 불러오기</button>
+    <button onclick="showPreviewPanel()" style="flex:1;background:#c8922a;color:#fff;border:none;padding:13px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">🖨️ 인쇄 / PDF</button>
   </div>
   <div class="section-card">
     <div class="card-head">📋 견적서 정보</div>
@@ -731,11 +704,18 @@ if('serviceWorker' in navigator){
 
 <!-- 미리보기 -->
 <div id="panel-preview" class="tab-panel">
-  <div id="preview-actions" style="display:flex;border-bottom:1px solid var(--border)">
-    <button onclick="sendEmail()" style="background:#1565c0;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📧 이메일 발송</button>
-    <button onclick="sendSMS()" style="background:#6a1b9a;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📱 문자 발송</button>
-    <button onclick="sendEmailAndSMS()" style="background:#2d7a4f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📧📱 둘 다 발송</button>
-    <button onclick="printQuote()" style="background:#c8922a;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">🖨️ 인쇄</button>
+  <div id="preview-actions">
+    <button onclick="sendEmail()" style="background:#27ae60;color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">📧 이메일 발송</button>
+    <button onclick="(()=>{
+      buildPreview();
+      const d=getFormData();
+      const company=d.company||'거래처';
+      const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
+      const pdfName=firstItem?company+'_'+firstItem+'_견적서':company+'_견적서';
+      const origTitle=document.title;
+      document.title=pdfName;
+      setTimeout(()=>{window.print();setTimeout(()=>{document.title=origTitle;},500);},300);
+    })()" style="background:var(--primary);color:#fff;border:none;flex:1;padding:14px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🖨️ 인쇄 / PDF</button>
   </div>
   <div id="preview-wrap">
     <div id="print-area"></div>
@@ -744,81 +724,36 @@ if('serviceWorker' in navigator){
 
 <!-- 거래명세서 -->
 <div id="panel-delivery" class="tab-panel">
-  <!-- 상단 액션 버튼 -->
-  <div id="delivery-actions" style="display:flex;border-bottom:1px solid var(--border)">
-    <button onclick="newDelivery()" style="background:#37474f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📄 새 문서</button>
-    <button onclick="openDeliveryDocPicker()" style="background:#1a3a5c;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📂 불러오기</button>
-    <button onclick="toggleDeliveryEdit()" id="btn-dlv-edit" style="background:#2d7a4f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">✏️ 내용 수정</button>
-  </div>
-
-  <!-- 기본 입력 (납품일/장소/번호) -->
-  <div style="padding:10px 14px;background:#f4f4f0;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-    <div class="form-group" style="flex:1;min-width:120px">
-      <label style="font-size:11px;color:var(--muted);font-weight:600">납품일자</label>
-      <input id="dlv-date" type="date" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;outline:none;background:#fff;width:100%">
+  <div style="max-width:1100px;margin:0 auto;padding:12px 14px">
+    <!-- 액션바 -->
+    <div style="display:flex;border-radius:6px;overflow:hidden;margin-bottom:12px">
+      <button onclick="dlvLoadFromQuote()" style="flex:1;background:#1a3a5c;color:#fff;border:none;padding:13px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">📂 견적서에서 불러오기</button>
+      <button onclick="dlvPrint()" style="flex:1;background:#c8922a;color:#fff;border:none;padding:13px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">🖨️ 인쇄 / PDF</button>
     </div>
-    <div class="form-group" style="flex:2;min-width:150px">
-      <label style="font-size:11px;color:var(--muted);font-weight:600">납품장소</label>
-      <input id="dlv-place" type="text" placeholder="예: 귀사 지정 장소" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;outline:none;background:#fff;width:100%">
-    </div>
-    <div class="form-group" style="flex:1;min-width:120px">
-      <label style="font-size:11px;color:var(--muted);font-weight:600">거래명세서 번호</label>
-      <input id="dlv-no" type="text" placeholder="자동생성" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;outline:none;background:#fff;width:100%">
-    </div>
-  </div>
-
-  <!-- 편집 패널 (기본 숨김) -->
-  <div id="dlv-edit-panel" style="display:none;padding:12px 14px;background:#fff;border-bottom:2px solid #2d7a4f">
-    <div style="font-size:12px;font-weight:700;color:#2d7a4f;margin-bottom:10px">✏️ 거래명세서 직접 수정</div>
-
-    <!-- 거래처 정보 -->
-    <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:8px">🏢 수신처</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="form-group">
-          <label>거래처명</label>
-          <input id="dlv-company" type="text" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group">
-          <label>담당자</label>
-          <input id="dlv-person" type="text" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group">
-          <label>연락처</label>
-          <input id="dlv-tel" type="text" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group">
-          <label>결재조건</label>
-          <input id="dlv-payment" type="text" oninput="dlvMarkDirty()" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
+    <!-- 납품 정보 카드 -->
+    <div class="section-card">
+      <div class="card-head">🚚 납품 정보</div>
+      <div class="card-body">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="fg" style="flex:1;min-width:120px">
+            <label>납품일자</label>
+            <input id="dlv-date" type="date" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;background:#fff;width:100%">
+          </div>
+          <div class="fg" style="flex:2;min-width:160px">
+            <label>납품장소</label>
+            <input id="dlv-place" type="text" placeholder="귀사 지정 장소" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;background:#fff;width:100%">
+          </div>
+          <div class="fg" style="flex:1;min-width:120px">
+            <label>명세서 번호</label>
+            <input id="dlv-no" type="text" placeholder="자동생성" style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;background:#fff;width:100%">
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- 품목 수정 -->
-    <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--primary)">📦 품목</div>
-        <button onclick="dlvAddItem()" class="btn-sm btn-primary" style="font-size:11px;padding:4px 10px">＋ 행 추가</button>
-      </div>
-      <div id="dlv-items-wrap" style="display:flex;flex-direction:column;gap:6px"></div>
-    </div>
-
-    <!-- 옵션 -->
-    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:8px 0">
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="checkbox" id="dlv-opt-vat" onchange="dlvMarkDirty()" checked> 부가세 (10%)
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="checkbox" id="dlv-opt-trunc" onchange="dlvMarkDirty()"> 원단위 절사
-      </label>
-    </div>
-
-    <button onclick="applyDeliveryEdit()" style="width:100%;background:#2d7a4f;color:#fff;border:none;padding:11px;border-radius:6px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-top:4px">✅ 수정 내용 미리보기에 반영</button>
   </div>
-
   <!-- 미리보기 -->
-  <div id="delivery-preview-wrap" style="background:#888;padding:20px;min-height:200px;display:flex;justify-content:center;overflow-x:hidden">
-    <div id="delivery-print-area" style="background:#fff;width:100%;max-width:794px;padding:24px 28px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;font-size:9pt;line-height:1.5;box-shadow:0 2px 16px rgba(0,0,0,.18)">
+  <div style="background:#888;padding:20px;min-height:300px;display:flex;justify-content:center;overflow-x:hidden">
+    <div id="dlv-print-area" style="background:#fff;width:100%;max-width:794px;padding:24px 28px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;font-size:9pt;line-height:1.5;box-shadow:0 2px 16px rgba(0,0,0,.18)">
       <div style="text-align:center;padding:60px 0;color:#bbb;font-size:14px">
         📋 상단의 <strong style="color:#1a3a5c">견적서에서 불러오기</strong> 버튼을 눌러주세요
       </div>
@@ -829,33 +764,26 @@ if('serviceWorker' in navigator){
 <!-- 문서함 -->
 <div id="panel-docs" class="tab-panel">
   <div class="docs-toolbar">
-    <input type="text" id="doc-search" placeholder="🔍 검색 — 견적서 · 거래명세서 동시 검색" oninput="renderDocs();renderDlvDocs()">
+    <input type="text" id="doc-search" placeholder="🔍 문서 검색" oninput="renderDocs()">
     <button class="btn-sm" onclick="renderDocs()">새로고침</button>
   </div>
-  <div class="docs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:300px">
-    <!-- 견적서 컬럼 -->
-    <div style="border-right:2px solid var(--border)">
-      <div style="background:#2563eb;color:#fff;padding:8px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">
-        📋 견적서 <span id="quote-count" style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 8px;font-size:11px"></span>
-      </div>
-      <div class="doc-list" id="doc-list" style="padding:10px 12px"></div>
-    </div>
-    <!-- 거래명세서 컬럼 -->
-    <div>
-      <div style="background:#c8922a;color:#fff;padding:8px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">
-        🚚 거래명세서 <span id="dlv-count" style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 8px;font-size:11px"></span>
-      </div>
-      <div class="doc-list" id="dlv-list" style="padding:10px 12px"></div>
-    </div>
+  <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:12px">
+    <button id="docs-tab-quote" onclick="switchDocsTab('quote')"
+      style="flex:1;background:transparent;border:none;border-bottom:3px solid var(--primary);margin-bottom:-2px;padding:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;color:var(--primary)">
+      📋 견적서
+    </button>
+    <button id="docs-tab-delivery" onclick="switchDocsTab('delivery')"
+      style="flex:1;background:transparent;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;padding:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">
+      🚚 거래명세서
+    </button>
   </div>
+  <div class="doc-list" id="doc-list"></div>
 </div>
 
 <!-- 거래처 관리 -->
 <div id="panel-customers" class="tab-panel">
-  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+  <div style="display:flex;gap:8px;margin-bottom:12px">
     <button class="btn-sm btn-primary" onclick="openSaveCust()">＋ 거래처 추가</button>
-    <button class="btn-sm" onclick="dedupCusts()" style="background:#fff3cd;color:#856404;border-color:#ffc107">🧹 중복 정리</button>
-    <span id="custs-dedup-msg" style="font-size:11px;color:var(--muted)"></span>
   </div>
   <div class="customer-list" id="customer-list"></div>
 </div>
@@ -885,130 +813,6 @@ if('serviceWorker' in navigator){
     <input type="text" id="cust-q" placeholder="검색" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 10px;margin-bottom:10px;font-family:var(--font)" oninput="renderCustSearch()">
     <div id="cust-list" style="max-height:260px;overflow-y:auto"></div>
     <div class="modal-footer"><button class="btn-sm" onclick="closeModal('modal-load-cust')">닫기</button></div>
-  </div>
-</div>
-
-<!-- 거래명세서 견적서 선택 모달 -->
-<div class="modal-overlay" id="modal-delivery-picker">
-  <div class="modal-box" style="max-width:580px;width:100%;padding:0;overflow:hidden;border-radius:10px">
-    <!-- 모달 헤더 -->
-    <div style="background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:700">📂 견적서 선택</div>
-      <button onclick="closeModal('modal-delivery-picker')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
-    </div>
-    <!-- 검색창 -->
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:#f8f7f4">
-      <div style="position:relative">
-        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px">🔍</span>
-        <input type="text" id="dlv-picker-search" placeholder="거래처명 또는 문서번호 검색"
-          style="width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px 8px 32px;
-          font-family:var(--font);font-size:13px;outline:none;background:#fff"
-          oninput="renderDeliveryPicker()">
-      </div>
-      <div id="dlv-picker-count" style="font-size:11px;color:var(--muted);margin-top:6px;padding-left:2px"></div>
-    </div>
-    <!-- 목록 -->
-    <div id="dlv-picker-list" style="max-height:400px;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:#f4f4f0"></div>
-    <!-- 하단 -->
-    <div style="padding:10px 16px;border-top:1px solid var(--border);background:#fff;text-align:right">
-      <button class="btn-sm" onclick="closeModal('modal-delivery-picker')">닫기</button>
-    </div>
-  </div>
-</div>
-
-<!-- 거래명세서 발송 모달 -->
-<div class="modal-overlay" id="modal-dlv-send">
-  <div class="modal-box" style="max-width:500px;width:100%;padding:0;overflow:hidden;border-radius:10px">
-    <!-- 헤더 -->
-    <div style="background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:700">📤 거래명세서 발송</div>
-      <button onclick="closeModal('modal-dlv-send')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
-    </div>
-
-    <!-- 문서 정보 -->
-    <div style="background:#f0f6ff;border-bottom:1px solid #d0e4f7;padding:10px 20px;font-size:12px;color:#1a3a5c;display:flex;gap:10px;align-items:center">
-      <span>📋</span>
-      <span><strong id="dlv-send-company2"></strong> &nbsp;<span style="color:#888">|</span>&nbsp; <span id="dlv-send-docno2" style="color:#666"></span></span>
-    </div>
-
-    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
-
-      <!-- 수신자 -->
-      <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:2px">👤 수신자 정보</div>
-        <div class="form-group">
-          <label style="font-size:11px;color:var(--muted);font-weight:600">담당자명</label>
-          <input id="dlv-send-person" type="text" placeholder="홍길동 구매팀장"
-            style="border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group">
-          <label style="font-size:11px;color:var(--muted);font-weight:600">이메일</label>
-          <input id="dlv-send-email" type="email" placeholder="purchase@company.com" inputmode="email"
-            style="border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group">
-          <label style="font-size:11px;color:var(--muted);font-weight:600">연락처</label>
-          <input id="dlv-send-tel" type="text" placeholder="010-0000-0000" inputmode="tel" maxlength="13"
-            oninput="fmtTel(this)"
-            style="border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-      </div>
-
-      <!-- 발송 방법 선택 -->
-      <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px">
-        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:2px">📬 발송 방법</div>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;transition:border-color .15s"
-          id="dlv-email-option">
-          <input type="checkbox" id="dlv-chk-email" onchange="dlvToggleSendOptions()" checked
-            style="width:16px;height:16px;cursor:pointer;accent-color:#1565c0">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:#1565c0">📧 이메일 발송</div>
-            <div style="font-size:11px;color:#888;margin-top:1px">PDF 첨부 링크를 이메일로 전송</div>
-          </div>
-        </label>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;transition:border-color .15s"
-          id="dlv-sms-option">
-          <input type="checkbox" id="dlv-chk-sms" onchange="dlvToggleSendOptions()"
-            style="width:16px;height:16px;cursor:pointer;accent-color:#6a1b9a">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:#6a1b9a">📱 문자 발송</div>
-            <div style="font-size:11px;color:#888;margin-top:1px">SMS로 발송 안내 문자 전송</div>
-          </div>
-        </label>
-      </div>
-
-      <!-- 문자 내용 편집 (문자 체크시 표시) -->
-      <div id="dlv-sms-content-wrap" style="display:none;background:#faf4ff;border:1px solid #d4a8f0;border-radius:6px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:#6a1b9a;margin-bottom:6px">📝 문자 내용 수정</div>
-        <textarea id="dlv-send-sms-text" rows="4"
-          style="width:100%;border:1px solid #d4a8f0;border-radius:4px;padding:8px 10px;font-family:var(--font);font-size:12px;resize:vertical;line-height:1.6"></textarea>
-        <div style="font-size:10px;color:#aaa;margin-top:4px">* 내용을 자유롭게 수정하세요</div>
-      </div>
-
-    </div>
-
-    <!-- 하단 버튼 -->
-    <div style="padding:12px 20px;border-top:1px solid var(--border);background:#fff;display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn-sm" onclick="closeModal('modal-dlv-send')">취소</button>
-      <button id="dlv-send-confirm-btn" onclick="confirmDlvSend()"
-        style="background:#1a3a5c;color:#fff;border:1px solid #1a3a5c;border-radius:4px;padding:8px 22px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer">
-        📤 발송
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- 견적서 불러오기 모달 -->
-<div class="modal-overlay" id="modal-load-quote">
-  <div class="modal-box" style="max-width:520px;width:100%;padding:0;overflow:hidden;border-radius:10px">
-    <div style="background:#2563eb;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:700">📂 견적서 불러오기</div>
-      <button onclick="closeModal('modal-load-quote')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>
-    </div>
-    <div id="load-quote-list" style="max-height:420px;overflow-y:auto;padding:12px 14px;background:#f4f4f0"></div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border);background:#fff;text-align:right">
-      <button class="btn-sm" onclick="closeModal('modal-load-quote')">닫기</button>
-    </div>
   </div>
 </div>
 
@@ -1060,7 +864,7 @@ const COM={
 };
 
 let items=[],docId=null,autoTimer=null;
-let _docsCache={}, _custsCache=[], _dlvCache={};
+let _docsCache={}, _custsCache=[];
 
 // ════════════════════════════════════
 // 초기화
@@ -1068,12 +872,7 @@ let _docsCache={}, _custsCache=[], _dlvCache={};
 function _init(){
   const _draft = localStorage.getItem('htc_draft');
   if(_draft){
-    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-      loadDraft();
-    }else{
-      localStorage.removeItem('htc_draft');
-      newDoc();
-    }
+    loadDraft();
   } else {
     document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
     genDocNo();
@@ -1098,122 +897,65 @@ function genDocNo(){
 // ════════════════════════════════════
 // 탭
 // ════════════════════════════════════
-let _currentTab = 'quote';
-let _prevTab = 'quote';
-
-function _restoreDlvActions(){
-  document.getElementById('delivery-actions').innerHTML=`
-    <button onclick="newDelivery()" style="background:#37474f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📄 새 문서</button>
-    <button onclick="openDeliveryDocPicker()" style="background:#1a3a5c;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📂 불러오기</button>
-    <button onclick="toggleDeliveryEdit()" id="btn-dlv-edit" style="background:#2d7a4f;color:#fff;border:none;flex:1;padding:13px 8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">✏️ 내용 수정</button>`;
+let _currentTab='quote';
+function smartSave(){
+  if(_currentTab==='delivery') dlvSave();
+  else saveDoc();
 }
 
-function switchToPreview(){
-  const btn=Array.from(document.querySelectorAll('#appbar .tabs button')).find(b=>b.onclick?.toString().includes("'preview'"));
-  if(btn) showTab('preview',btn);
-}
-
-function printQuote(){
+function showPreviewPanel(){
   buildPreview();
   const d=getFormData();
   const company=d.company||'거래처';
-  const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
-  const pdfName=firstItem?company+'_'+firstItem+'_견적서':company+'_견적서';
+  const firstItem=d.items&&d.items[0]?d.items[0].name:'';
+  const pdfName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
   const origTitle=document.title;
   document.title=pdfName;
   setTimeout(()=>{window.print();setTimeout(()=>{document.title=origTitle;},500);},300);
 }
 
-async function sendEmailAndSMS(){
-  await sendEmail();
-  // sendEmail 완료 후 SMS는 sendEmail 내부에서 제안 - 별도 호출
-}
-
-function newDelivery(){
-  _dlvData=null;
-  document.getElementById('dlv-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('dlv-place').value='';
-  document.getElementById('dlv-no').value='';
-  document.getElementById('delivery-print-area').innerHTML='<div style="text-align:center;padding:60px 0;color:#bbb;font-size:14px">📋 상단의 <strong style="color:#1a3a5c">불러오기</strong> 버튼을 눌러주세요</div>';
-  // 편집 패널 닫기
-  const editPanel=document.getElementById('dlv-edit-panel');
-  if(editPanel) editPanel.style.display='none';
-  const editBtn=document.getElementById('btn-dlv-edit');
-  if(editBtn){editBtn.textContent='✏️ 내용 수정';editBtn.style.background='#2d7a4f';}
-}
-
-function sendDeliveryBoth(){
-  if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
-  _openDlvSendModal('both');
-}
-
-function openLoadDocModal(){
-  // 문서함에서 불러오기 - 견적서 선택 모달 (기존 picker 재활용)
-  loadFirestoreDocs().then(()=>{
-    const docs=getDocs2();
-    const entries=Object.entries(docs).sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
-    // 간단한 모달로 표시
-    const list=entries.map(([k,v])=>{
-      const total=v.items?v.items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0):0;
-      const vat=v.optVat!==false?Math.round(total*.1):0;
-      return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;background:#fff;cursor:pointer;margin-bottom:6px;transition:border-color .15s"
-        onmouseover="this.style.borderColor='#2563eb'" onmouseout="this.style.borderColor='var(--border)'"
-        onclick="loadDoc('${k}');closeModal('modal-load-quote')">
-        <div style="font-weight:600;font-size:13px">${v.company||'거래처'} <span style="font-size:11px;color:#888;background:#f0ede6;padding:1px 6px;border-radius:10px;margin-left:4px">${v.docNo||''}</span></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${v.date||''} · ${comma(total+vat)}원</div>
-      </div>`;
-    }).join('');
-    document.getElementById('load-quote-list').innerHTML=list||'<div class="empty-msg">저장된 견적서가 없습니다.</div>';
-    openModal('modal-load-quote');
+async function openLoadDocModal(){
+  await loadFirestoreDocs();
+  const docs=getDocs2();
+  const entries=Object.entries(docs).sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  if(!entries.length){alert('저장된 견적서가 없습니다.');return;}
+  let html=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center" id="load-doc-overlay">
+    <div style="background:#fff;border-radius:10px;width:90%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="background:#1a3a5c;color:#fff;padding:14px 20px;font-size:15px;font-weight:700;display:flex;justify-content:space-between;align-items:center">
+        <span>📂 견적서 불러오기</span>
+        <button onclick="document.getElementById('load-doc-overlay').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:12px;background:#f4f4f0;flex:1">`;
+  entries.forEach(([k,v])=>{
+    html+=`<div onclick="loadDoc('${k}');document.getElementById('load-doc-overlay').remove()"
+      style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer"
+      onmouseover="this.style.borderColor='#1a3a5c'" onmouseout="this.style.borderColor='#ddd'">
+      <div style="font-weight:700;font-size:13px;color:#1a3a5c">${v.fileName||v.docNo}</div>
+      <div style="font-size:11px;color:#888;margin-top:3px">${v.date||''} · 담당: ${v.manager||'-'}</div>
+    </div>`;
   });
-}
-
-function openEditQuote(){
-  // 견적서 작성 폼이 이미 편집 가능하므로 폼 상단으로 스크롤
-  document.querySelector('#panel-quote .section-card')?.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-function smartSave(){
-  if(_currentTab === 'delivery'){
-    saveDelivery();
-  } else {
-    saveDoc();
-  }
+  html+=`</div></div></div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
 }
 
 function showTab(name,btn){
-  // dlvpreview는 delivery 패널을 열고 미리보기 영역으로 이동
-  const panelName = name==='dlvpreview' ? 'delivery' : name;
-  _currentTab = panelName;
+  _currentTab=name;
+  const panelName=name==='dlvprint'?'delivery':name;
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('#appbar .tabs button').forEach(b=>b.classList.remove('active'));
   document.getElementById('panel-'+panelName).classList.add('active');
   btn.classList.add('active');
-  // 저장 버튼 라벨
-  const saveBtn=document.querySelector('.ab-btn.ab-save');
-  if(saveBtn) saveBtn.textContent=panelName==='delivery'?'💾 거래명세서 저장':'💾 견적서 저장';
   if(name==='preview'){buildPreview();setTimeout(scalePreview,100);}
-  if(name==='dlvpreview'){
-    document.getElementById('delivery-actions').innerHTML=`
-      <button onclick="sendDeliveryEmail()" style="background:#1565c0;color:#fff;border:none;flex:1;padding:13px 4px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">📧 이메일<br>발송</button>
-      <button onclick="_openDlvSendModal('email')" style="background:#0d47a1;color:#fff;border:none;padding:13px 8px;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;border-left:1px solid rgba(255,255,255,.2)">✏️ 수정</button>
-      <button onclick="sendDeliverySMS()" style="background:#6a1b9a;color:#fff;border:none;flex:1;padding:13px 4px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">📱 문자<br>발송</button>
-      <button onclick="_openDlvSendModal('sms')" style="background:#4a148c;color:#fff;border:none;padding:13px 8px;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;border-left:1px solid rgba(255,255,255,.2)">✏️ 수정</button>
-      <button onclick="sendDeliveryBoth()" style="background:#2d7a4f;color:#fff;border:none;flex:1;padding:13px 4px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">📧📱 둘 다<br>발송</button>
-      <button onclick="_openDlvSendModal('both')" style="background:#1b5e37;color:#fff;border:none;padding:13px 8px;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;border-left:1px solid rgba(255,255,255,.2)">✏️ 수정</button>
-      <button onclick="printDelivery()" style="background:#c8922a;color:#fff;border:none;flex:1;padding:13px 4px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">🖨️ 인쇄</button>`;
-    setTimeout(()=>document.getElementById('delivery-preview-wrap')?.scrollIntoView({behavior:'smooth',block:'start'}),100);
+  if(name==='dlvprint'){
+    const area=document.getElementById('dlv-print-area');
+    if(area&&!area.innerText.includes('견적서에서 불러오기')) setTimeout(dlvPrint,300);
+    else alert('먼저 거래명세서 탭에서 견적서를 불러온 뒤 인쇄해주세요.');
   }
-  if(name==='delivery' && _prevTab==='dlvpreview'){
-    // 작성 탭으로 돌아오면 원래 액션바 복원
-    _restoreDlvActions();
-  }
-  _prevTab=name;
-  if(panelName==='delivery'){
+  if(name==='delivery'){
     if(!document.getElementById('dlv-date').value)
       document.getElementById('dlv-date').value=new Date().toISOString().slice(0,10);
   }
-  if(name==='docs'){loadFirestoreDocs().then(()=>{renderDocs();renderDlvDocs();});loadFirestoreDeliveries().then(renderDlvDocs);}
+  if(name==='docs'){loadFirestoreDocs().then(renderDocs);loadFirestoreDeliveries();}
   if(name==='customers'){loadFirestoreCusts().then(renderCustomers);}
 }
 
@@ -1561,132 +1303,125 @@ function newDoc(){
 }
 function getDocs2(){return _docsCache;}
 
-// ════════════════════════════════════
-// 문서함
-// ════════════════════════════════════
+let _docsTab='quote'; // 'quote' | 'delivery'
+let _dlvCache={};    // 거래명세서 캐시
+let _currentDlvData=null; // 현재 작업 중인 거래명세서 데이터
+
+function switchDocsTab(tab){
+  _docsTab=tab;
+  const qBtn=document.getElementById('docs-tab-quote');
+  const dBtn=document.getElementById('docs-tab-delivery');
+  if(tab==='quote'){
+    qBtn.style.color='var(--primary)';qBtn.style.borderBottomColor='var(--primary)';
+    dBtn.style.color='var(--muted)';dBtn.style.borderBottomColor='transparent';
+    renderDocs();
+  } else {
+    dBtn.style.color='var(--primary)';dBtn.style.borderBottomColor='var(--primary)';
+    qBtn.style.color='var(--muted)';qBtn.style.borderBottomColor='transparent';
+    loadFirestoreDeliveries().then(renderDeliveryDocs);
+  }
+}
+
 function renderDocs(){
+  if(_docsTab==='delivery'){renderDeliveryDocs();return;}
   const q=(document.getElementById('doc-search').value||'').toLowerCase();
   const docs=getDocs2();
   const list=document.getElementById('doc-list');
   const entries=Object.entries(docs)
-    .filter(([k,v])=>!q||( (v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q) ))
+    .filter(([k,v])=>!q||v.docNo.toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q))
     .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
-  const countEl=document.getElementById('quote-count');
-  if(countEl) countEl.textContent=entries.length+'건';
   if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 견적서가 없습니다.</div>';return;}
   list.innerHTML=entries.map(([k,v])=>`
     <div class="doc-card">
       <div class="doc-info">
-        <div class="doc-title-text">${v.fileName || (v.docNo + ' — ' + (v.company||'거래처'))}</div>
-        <div class="doc-meta-text">${v.date||''} | ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
+        <div class="doc-title-text">${v.fileName||v.docNo}</div>
+        <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">✏️</button>
-        <button class="btn-sm" style="background:#e8f4ec;color:#1a7a40;border-color:#a8d5b5" onclick="loadDocToDelivery('${k}')">🚚</button>
+        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
         <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
       </div>
     </div>`).join('');
 }
 
-function renderDlvDocs(){
+function renderDeliveryDocs(){
   const q=(document.getElementById('doc-search').value||'').toLowerCase();
-  const docs=_dlvCache||{};
-  const list=document.getElementById('dlv-list');
-  if(!list)return;
-  const entries=Object.entries(docs)
-    .filter(([k,v])=>!q||( (v.dlvNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q) ))
+  const list=document.getElementById('doc-list');
+  const entries=Object.entries(_dlvCache)
+    .filter(([k,v])=>!q||(v.dlvNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q))
     .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
-  const countEl=document.getElementById('dlv-count');
-  if(countEl) countEl.textContent=entries.length+'건';
   if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 거래명세서가 없습니다.</div>';return;}
-  list.innerHTML=entries.map(([k,v])=>{
-    const total=v.items?v.items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0):0;
-    const vat=v.optVat!==false?Math.round(total*.1):0;
-    return `<div class="doc-card dlv-card">
+  list.innerHTML=entries.map(([k,v])=>`
+    <div class="doc-card">
       <div class="doc-info">
-        <div class="doc-title-text" style="color:#1a5c35">${v.company||'거래처'} — ${v.dlvNo||''}</div>
-        <div class="doc-meta-text">${v.dlvDate||''} | ${comma(total+vat)}원 | 저장: ${fmtDt(v.savedAt)}</div>
+        <div class="doc-title-text">${v.fileName||v.dlvNo}</div>
+        <div class="doc-meta-text">${v.dlvDate||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-sm" style="background:#e8f4ec;color:#1a7a40;border-color:#a8d5b5" onclick="loadDlvDoc('${k}')">열기</button>
+        <button class="btn-sm btn-primary" onclick="loadDlvDoc('${k}')">불러오기</button>
         <button class="btn-sm btn-danger" onclick="delDlvDoc('${k}')">삭제</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
+}
+
+async function loadFirestoreDeliveries(){
+  try{
+    const {collection,getDocs,query,orderBy}=window._fbFns;
+    const db=window._db;if(!db)return;
+    const snap=await getDocs(query(collection(db,'deliveries'),orderBy('savedAt','desc')));
+    _dlvCache={};
+    snap.forEach(d=>{_dlvCache['dlv_'+d.id]=d.data();});
+  }catch(e){console.log('거래명세서 로드 실패',e);}
+}
+
+async function dlvSave(){
+  const area=document.getElementById('dlv-print-area');
+  if(!area||area.innerText.includes('견적서에서 불러오기')){
+    alert('먼저 거래명세서를 생성해주세요.');return;
+  }
+  if(!_currentDlvData){alert('거래명세서 데이터가 없습니다.');return;}
+  const dlvNo=document.getElementById('dlv-no').value;
+  const dlvDate=document.getElementById('dlv-date').value;
+  const company=_currentDlvData.company||'거래처';
+  const firstItem=(_currentDlvData.items&&_currentDlvData.items[0])?_currentDlvData.items[0].name:'';
+  const fileName=firstItem?`${company}_${firstItem}_거래명세서`:`${company}_거래명세서`;
+  const data={..._currentDlvData, dlvNo, dlvDate,
+    dlvPlace:document.getElementById('dlv-place').value,
+    savedAt:new Date().toISOString(),
+    fileName};
+  try{
+    const {doc,setDoc,collection}=window._fbFns;
+    await setDoc(doc(collection(window._db,'deliveries'),dlvNo),data);
+    _dlvCache['dlv_'+dlvNo]=data;
+    alert('✅ 저장 완료!\n'+data.fileName);
+  }catch(e){alert('저장 실패: '+e.message);}
+}
+
+function loadDlvDoc(key){
+  const d=_dlvCache[key];if(!d)return;
+  document.getElementById('dlv-date').value=d.dlvDate||'';
+  document.getElementById('dlv-place').value=d.dlvPlace||'';
+  document.getElementById('dlv-no').value=d.dlvNo||'';
+  _currentDlvData=d;
+  // 거래명세서 탭으로 이동
+  const btn=Array.from(document.querySelectorAll('#appbar .tabs button')).find(b=>b.textContent.includes('거래명세서'));
+  if(btn) showTab('delivery',btn);
+  dlvBuild(d);
+}
+
+async function delDlvDoc(key){
+  if(!confirm('이 거래명세서를 삭제하시겠습니까?'))return;
+  const dlvNo=key.replace('dlv_','');
+  try{
+    const {doc,deleteDoc,collection}=window._fbFns;
+    await deleteDoc(doc(collection(window._db,'deliveries'),dlvNo));
+    delete _dlvCache[key];
+    renderDeliveryDocs();
+  }catch(e){alert('삭제 실패: '+e.message);}
 }
 function loadDoc(key){
   const docs=getDocs2();
   if(docs[key]){setFormData(docs[key]);showTab('quote',document.querySelector('#appbar .tabs button'));}
-}
-function loadDocToDelivery(key){
-  const docs=getDocs2();
-  if(!docs[key])return;
-  const d=docs[key];
-  // 납품일 오늘로 초기화
-  document.getElementById('dlv-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('dlv-place').value='';
-  document.getElementById('dlv-no').value='';
-  // 거래명세서 탭으로 이동 후 바로 빌드
-  const btn=Array.from(document.querySelectorAll('#appbar .tabs button')).find(b=>b.onclick?.toString().includes('delivery'));
-  showTab('delivery',btn);
-  buildDeliveryPreview(d);
-}
-
-async function openDeliveryDocPicker(){
-  document.getElementById('dlv-picker-search').value='';
-  document.getElementById('dlv-picker-count').textContent='';
-  document.getElementById('dlv-picker-list').innerHTML=
-    '<div style="text-align:center;padding:30px;color:#aaa;font-size:13px">⏳ 문서 불러오는 중...</div>';
-  openModal('modal-delivery-picker');
-  // Firestore 최신 데이터 보장
-  await loadFirestoreDocs();
-  renderDeliveryPicker();
-}
-
-function renderDeliveryPicker(){
-  const q=(document.getElementById('dlv-picker-search').value||'').toLowerCase();
-  const docs=getDocs2();
-  const list=document.getElementById('dlv-picker-list');
-  const countEl=document.getElementById('dlv-picker-count');
-  const all=Object.entries(docs).sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
-  const entries=all.filter(([k,v])=>!q||(v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q));
-  
-  // 건수 표시
-  if(q) countEl.textContent=`검색결과 ${entries.length}건 / 전체 ${all.length}건`;
-  else countEl.textContent=`전체 ${all.length}건 · 최근 작성순`;
-
-  if(!entries.length){
-    list.innerHTML=`<div style="text-align:center;padding:40px;color:#bbb;font-size:13px">${q?'검색 결과가 없습니다':'저장된 문서가 없습니다'}</div>`;
-    return;
-  }
-  list.innerHTML=entries.map(([k,v])=>{
-    const items=v.items||[];
-    const supply=items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0);
-    const vat=v.optVat!==false?Math.round(supply*.1):0;
-    const total=supply+vat;
-    const itemNames=items.slice(0,2).map(it=>it.name).filter(Boolean).join(', ')+(items.length>2?` 외 ${items.length-2}건`:'');
-    const dateStr=v.date||'';
-    return `<div style="border:1px solid #ddd;border-radius:8px;padding:12px 14px;
-      background:#fff;cursor:pointer;transition:all .15s;active:transform:scale(.98)"
-      onmouseover="this.style.borderColor='#1a3a5c';this.style.background='#f0f6ff'"
-      onmouseout="this.style.borderColor='#ddd';this.style.background='#fff'"
-      onclick="closeModal('modal-delivery-picker');loadDocToDelivery('${k}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-            <span style="font-weight:700;font-size:13px;color:#1a3a5c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.company||'(거래처 없음)'}</span>
-            <span style="font-size:10px;color:#888;background:#f0ede6;padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0">${v.docNo||''}</span>
-          </div>
-          ${itemNames?`<div style="font-size:11px;color:#555;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${itemNames}</div>`:''}
-          <div style="font-size:11px;color:#999">${dateStr} · 담당: ${v.manager||'-'}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-weight:700;font-size:13px;color:#1a3a5c">${comma(total)}원</div>
-          <div style="font-size:10px;color:#aaa;margin-top:2px">공급 ${comma(supply)}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
 }
 async function delDoc(key){
   if(!confirm('이 문서를 삭제하시겠습니까?'))return;
@@ -1716,27 +1451,19 @@ function saveCust(){
   const name=document.getElementById('mc-co').value.trim();
   if(!name){alert('거래처명을 입력해주세요.');return;}
   const custs=getCusts();
+  const nc={id:Date.now(),company:name,
+    person:document.getElementById('mc-person').value,
+    tel:document.getElementById('mc-tel').value,
+    email:document.getElementById('mc-email').value,
+    addr:document.getElementById('mc-addr').value};
   const ex=custs.findIndex(c=>c.company===name);
-  if(ex>=0){
-    if(!confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))return;
-    // 기존 id 유지하며 덮어쓰기
-    const updated={...custs[ex],
-      person:document.getElementById('mc-person').value,
-      tel:document.getElementById('mc-tel').value,
-      email:document.getElementById('mc-email').value,
-      addr:document.getElementById('mc-addr').value};
-    saveCustToFirestore(updated);
-  } else {
-    const nc={id:Date.now(),company:name,
-      person:document.getElementById('mc-person').value,
-      tel:document.getElementById('mc-tel').value,
-      email:document.getElementById('mc-email').value,
-      addr:document.getElementById('mc-addr').value};
-    saveCustToFirestore(nc);
-  }
+  if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))custs[ex]={...custs[ex],...nc};else return;}
+  else custs.push(nc);
+  saveCustToFirestore(nc);
   closeModal('modal-save-cust');
-  alert('저장되었습니다.');
+  alert('저장되었습니다. (실시간 동기화 중...)');
 }
+
 function openLoadCust(){renderCustSearch();openModal('modal-load-cust');}
 function renderCustSearch(){
   const q=(document.getElementById('cust-q').value||'').toLowerCase();
@@ -1768,40 +1495,6 @@ function renderCustomers(){
     </div></div>`).join('');
 }
 function applyCustSwitch(id){applyCust(id);showTab('quote',document.querySelector('#appbar .tabs button'));}
-async function dedupCusts(){
-  const custs=getCusts();
-  // 거래처명 기준으로 그룹핑, 각 그룹에서 가장 최근(id가 큰) 것만 남기고 나머지 삭제
-  const groups={};
-  custs.forEach(c=>{
-    const key=c.company.trim();
-    if(!groups[key]) groups[key]=[];
-    groups[key].push(c);
-  });
-  const toDelete=[];
-  Object.values(groups).forEach(arr=>{
-    if(arr.length<=1)return;
-    // id 큰 순(최근 저장)으로 정렬, 첫 번째만 남기고 나머지 삭제
-    arr.sort((a,b)=>b.id-a.id);
-    arr.slice(1).forEach(c=>toDelete.push(c));
-  });
-  if(!toDelete.length){
-    document.getElementById('custs-dedup-msg').textContent='중복 없음 ✓';
-    setTimeout(()=>document.getElementById('custs-dedup-msg').textContent='',2000);
-    return;
-  }
-  if(!confirm(`중복된 거래처 ${toDelete.length}건을 삭제하시겠습니까?\n(각 거래처명에서 가장 최근 저장본만 남깁니다)`))return;
-  const {doc,deleteDoc,collection}=window._fbFns;
-  let done=0;
-  for(const c of toDelete){
-    try{
-      await deleteDoc(doc(collection(window._db,'customers'),String(c.id)));
-      done++;
-    }catch(e){console.log('삭제 실패',c.company,e);}
-  }
-  document.getElementById('custs-dedup-msg').textContent=`✅ ${done}건 정리 완료`;
-  setTimeout(()=>document.getElementById('custs-dedup-msg').textContent='',3000);
-}
-
 async function delCust(id){
   if(!confirm('거래처를 삭제하시겠습니까?'))return;
   try{
@@ -1834,6 +1527,210 @@ function stampToSquare(src, size){
   });
 }
 
+// ════════════════════════════════════
+// 거래명세서
+// ════════════════════════════════════
+function dlvLoadFromQuote(){
+  dlvOpenPicker();
+}
+
+async function dlvOpenPicker(){
+  await loadFirestoreDocs();
+  const docs=_docsCache;
+  const entries=Object.entries(docs).sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  if(!entries.length){alert('저장된 견적서가 없습니다.\n먼저 견적서 작성 탭에서 작성 후 저장해주세요.');return;}
+
+  // 간단한 선택 UI를 모달로 표시
+  let html=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center" id="dlv-picker-overlay">
+    <div style="background:#fff;border-radius:10px;width:90%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="background:#1a3a5c;color:#fff;padding:14px 20px;font-size:15px;font-weight:700;display:flex;justify-content:space-between;align-items:center">
+        <span>📂 견적서 선택</span>
+        <button onclick="document.getElementById('dlv-picker-overlay').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:12px;background:#f4f4f0;flex:1">`;
+
+  entries.forEach(([k,v])=>{
+    const total=(v.items||[]).reduce((s,it)=>s+(it.qty||0)*(it.price||0),0);
+    const vat=v.optVat!==false?Math.round(total*.1):0;
+    html+=`<div onclick="dlvPickerSelect('${k}')" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#1a3a5c'" onmouseout="this.style.borderColor='#ddd'">
+      <div style="font-weight:700;font-size:13px;color:#1a3a5c">${v.company||'(거래처 없음)'} <span style="font-size:10px;color:#888;background:#f0ede6;padding:1px 7px;border-radius:10px;margin-left:4px">${v.docNo||''}</span></div>
+      <div style="font-size:11px;color:#888;margin-top:3px">${v.date||''} · ${(v.items||[]).slice(0,2).map(i=>i.name).filter(Boolean).join(', ')||'품목 없음'} · ${comma(total+vat)}원</div>
+    </div>`;
+  });
+
+  html+=`</div></div></div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+function dlvPickerSelect(key){
+  document.getElementById('dlv-picker-overlay')?.remove();
+  const d=_docsCache[key];
+  if(!d)return;
+  if(!document.getElementById('dlv-date').value)
+    document.getElementById('dlv-date').value=new Date().toISOString().slice(0,10);
+  if(!document.getElementById('dlv-no').value){
+    const t=new Date();
+    document.getElementById('dlv-no').value=
+      'DL-'+t.getFullYear().toString().slice(2)+
+      String(t.getMonth()+1).padStart(2,'0')+
+      String(t.getDate()).padStart(2,'0')+'-'+
+      Math.floor(Math.random()*90+10);
+  }
+  dlvBuild(d);
+}
+
+function dlvBuild(d){
+  _currentDlvData=d;
+  const dlvDate=document.getElementById('dlv-date').value;
+  const dlvPlace=document.getElementById('dlv-place').value||'귀사 지정 장소';
+  const dlvNo=document.getElementById('dlv-no').value;
+
+  let supply=d.items.reduce((s,it)=>s+it.qty*it.price,0);
+  let discAmt=0;
+  if(d.optDisc){const dv=parseFloat(d.discVal)||0;discAmt=d.discType==='pct'?supply*dv/100:dv;}
+  const after=supply-discAmt;
+  const vat=d.optVat?Math.round(after*.1):0;
+  let total=after+vat;
+  if(d.optTrunc)total=Math.floor(total/10)*10;
+
+  const isGwajang=(d.manager||'').includes('과장');
+  const stampSrc=isGwajang?STAMP_GWAJANG:STAMP_DAEPYO;
+  const mobile=isGwajang?COM.mobile_gwajang:COM.mobile_rep;
+
+  const MIN_ROWS=8;
+  const blankCount=Math.max(0,MIN_ROWS-d.items.length);
+  const blanks=Array(blankCount).fill('').map((_,i)=>{
+    const bg=(d.items.length+i)%2===1?'#f5f7fb':'#ffffff';
+    return `<tr><td colspan="8" style="border:.5px solid #ccc;height:20px;background:${bg}"></td></tr>`;
+  }).join('');
+  const rows=d.items.map((it,i)=>{
+    const bg=i%2===1?'#f5f7fb':'#ffffff';
+    const s=`border:.5px solid #ccc;padding:4px 6px;background:${bg}`;
+    return `<tr>
+      <td style="${s};text-align:center">${i+1}</td>
+      <td style="${s}">${it.name}</td>
+      <td style="${s}">${it.spec}</td>
+      <td style="${s};text-align:center">${it.unit}</td>
+      <td style="${s};text-align:right">${comma(it.qty)}</td>
+      <td style="${s};text-align:right">${comma(it.price)}</td>
+      <td style="${s};text-align:right">${comma(it.qty*it.price)}</td>
+      <td style="${s}">${(it.note||'').replace(/\n/g,'<br>')}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`
+    <!-- 제목 -->
+    <div style="background:#1a3a5c;color:#fff;margin-bottom:12px;padding:12px 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center">
+      <div style="font-size:8pt;opacity:.8">${COM.name}</div>
+      <div style="font-size:18pt;font-weight:700;text-align:center">거 래 명 세 서</div>
+      <div style="font-size:7.5pt;opacity:.8;text-align:right;line-height:2">No. ${dlvNo}<br>납품일: ${dlvDate}</div>
+    </div>
+    <!-- 수신/공급자 -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:8.5pt;table-layout:fixed">
+      <tr>
+        <td style="width:50%;vertical-align:top;padding-right:5px">
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt">▶ 수 신</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:56px;font-size:8pt;text-align:center;font-weight:600">거래처</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:10pt">${d.company||'-'}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">담당자</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${d.person||'-'}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">연락처</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${d.tel||'-'}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">납품장소</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:8pt">${dlvPlace}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">견적서 No</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:8pt;color:#888">${d.docNo||'-'}</td></tr>
+          </table>
+        </td>
+        <td style="width:50%;vertical-align:top;padding-left:5px">
+          <div style="position:relative">
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt">▶ 공 급 자</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:64px;font-size:8pt;text-align:center;font-weight:600;height:22px">상호</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:9pt">${COM.name}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600;height:22px">대표자</td>
+              <td style="border:.5px solid #c5cad6;padding:4px 8px;height:22px;position:relative">${COM.rep}
+                <img src="${STAMP_DAEPYO}" alt="직인" style="position:absolute;right:8px;top:-25px;width:50px;height:50px;object-fit:contain;opacity:0.88;pointer-events:none;z-index:10">
+              </td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">사업자번호</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${COM.biz}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">주소</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:7.5pt">${COM.addr}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">TEL</td>
+              <td style="border:.5px solid #c5cad6;padding:4px 8px">${COM.tel} &nbsp;|&nbsp; <span style="font-size:7.5pt;color:#444">담당: ${mobile}</span></td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">E-mail</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${COM.email}</td></tr>
+            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">입금계좌</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:7.5pt">${COM.bank}</td></tr>
+          </table>
+          </div>
+        </td>
+      </tr>
+    </table>
+    <!-- 품목 -->
+    <table style="width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:8px">
+      <thead><tr>
+        <th style="width:26px;background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;border:.5px solid #1a3a5c">No</th>
+        <th style="background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">품 목 명</th>
+        <th style="width:80px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">규격/모델</th>
+        <th style="width:34px;background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;border:.5px solid #1a3a5c">단위</th>
+        <th style="width:36px;background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;border:.5px solid #1a3a5c">수량</th>
+        <th style="width:76px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">단 가</th>
+        <th style="width:84px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">공급가액</th>
+        <th style="width:60px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">비 고</th>
+      </tr></thead>
+      <tbody>${rows}${blanks}</tbody>
+    </table>
+    <!-- 합계 -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <table style="border-collapse:collapse;font-size:8.5pt">
+        <tr><td style="background:#f0f3f8;color:#1a3a5c;font-weight:700;padding:5px 18px;border:.5px solid #c5cad6;text-align:center">공급가액 합계</td><td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right;min-width:100px">${comma(supply)} 원</td></tr>
+        ${d.optDisc?`<tr><td style="background:#fdf0ef;color:#c0392b;font-weight:700;padding:5px 18px;border:.5px solid #c5cad6;text-align:center">할 인</td><td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right;color:#c0392b">- ${comma(Math.round(discAmt))} 원</td></tr>`:''}
+        <tr><td style="background:#f0f3f8;color:#1a3a5c;font-weight:700;padding:5px 18px;border:.5px solid #c5cad6;text-align:center">부 가 세 (10%)</td><td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right">${d.optVat?comma(vat)+' 원':'미 적 용'}</td></tr>
+        <tr><td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:center">합 계 금 액</td><td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:right;font-size:10pt">${comma(total)} 원</td></tr>
+      </table>
+    </div>
+    <!-- 서명란 -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <table style="border-collapse:collapse;font-size:8.5pt;table-layout:fixed;width:270px">
+        <colgroup><col style="width:90px"><col style="width:90px"><col style="width:90px"></colgroup>
+        <tr>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c">담 당</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c">${isGwajang?'과 장':'대 표'}</td>
+          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c">확 인</td>
+        </tr>
+        <tr>
+          <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
+          <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
+            <img style="width:${isGwajang?36:46}px;height:${isGwajang?36:46}px;object-fit:contain;display:block;margin:auto" src="${stampSrc}" alt="도장">
+          </td>
+          <td style="border:.5px solid #c5cad6;height:70px"></td>
+        </tr>
+      </table>
+    </div>
+    <!-- 결재조건 -->
+    ${d.rPayment?`<div style="margin-bottom:10px;font-size:8pt;color:#555;padding:6px 10px;background:#f8f6f0;border:.5px solid #d0cdc4;border-radius:2px"><strong style="color:#1a3a5c">결재조건:</strong> ${d.rPayment}</div>`:''}
+    <!-- 하단 -->
+    <div style="margin-top:10px;padding-top:7px;border-top:2px solid #1a3a5c;font-size:7.5pt;color:#666;text-align:center;line-height:2">
+      <strong style="color:#1a3a5c;font-size:8.5pt">${COM.name}</strong> &nbsp;|&nbsp; 사업자등록번호: ${COM.biz} &nbsp;|&nbsp; 대표: ${COM.rep}<br>
+      ${COM.addr} &nbsp;|&nbsp; TEL: ${COM.tel} &nbsp;|&nbsp; E-mail: ${COM.email}<br>
+      입금계좌: ${COM.bank}
+    </div>`;
+
+  document.getElementById('dlv-print-area').innerHTML=html;
+}
+
+function dlvPrint(){
+  const area=document.getElementById('dlv-print-area');
+  const txt=area.innerText||'';
+  if(txt.includes('견적서에서 불러오기')){alert('먼저 견적서에서 불러오기를 눌러주세요.');return;}
+  const d=getFormData();
+  const pw=window.open('','_blank','width=900,height=700');
+  const company=d.company||'거래처';
+  const item0=d.items&&d.items[0]?d.items[0].name:'';
+  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <style>*{box-sizing:border-box;margin:0;padding:0;font-family:'Malgun Gothic','맑은 고딕',sans-serif;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+    body{background:#fff;padding:13mm 14mm 10mm}@page{size:A4 portrait;margin:0}</style>
+    <title>${company}${item0?'_'+item0:''}_거래명세서</title>
+    </head><body>${area.innerHTML}</body></html>`);
+  pw.document.close();
+  pw.onload=function(){pw.focus();pw.print();setTimeout(()=>pw.close(),1000);};
+}
+
+// ════════════════════════════════════
+// buildPreview
+// ════════════════════════════════════
 function buildPreview(){
   const d=getFormData();
   let supply=d.items.reduce((s,it)=>s+it.qty*it.price,0);
@@ -2028,335 +1925,6 @@ function buildPreview(){
 
 
 // ════════════════════════════════════
-// 거래명세서
-// ════════════════════════════════════
-// ════════════════════════════════════
-// 거래명세서 편집
-// ════════════════════════════════════
-let _dlvData = null; // 현재 거래명세서 기반 데이터
-let _dlvDirty = false;
-
-function dlvMarkDirty(){ _dlvDirty=true; }
-
-function toggleDeliveryEdit(){
-  const panel=document.getElementById('dlv-edit-panel');
-  const btn=document.getElementById('btn-dlv-edit');
-  const isOpen=panel.style.display!=='none';
-  if(isOpen){
-    panel.style.display='none';
-    btn.textContent='✏️ 내용 수정';
-    btn.style.background='#2d7a4f';
-  } else {
-    // 미리보기가 없으면 안내
-    const area=document.getElementById('delivery-print-area');
-    if(!_dlvData){alert('먼저 견적서에서 불러오기로 거래명세서를 생성해주세요.');return;}
-    panel.style.display='block';
-    btn.textContent='✕ 수정 닫기';
-    btn.style.background='#888';
-    renderDlvEditItems();
-  }
-}
-
-function renderDlvEditItems(){
-  if(!_dlvData)return;
-  // 거래처 필드 채우기
-  document.getElementById('dlv-company').value=_dlvData.company||'';
-  document.getElementById('dlv-person').value=_dlvData.person||'';
-  document.getElementById('dlv-tel').value=_dlvData.tel||'';
-  document.getElementById('dlv-payment').value=_dlvData.rPayment||'';
-  document.getElementById('dlv-opt-vat').checked=_dlvData.optVat!==false;
-  document.getElementById('dlv-opt-trunc').checked=!!_dlvData.optTrunc;
-
-  // 품목 카드 렌더
-  const wrap=document.getElementById('dlv-items-wrap');
-  const items=_dlvData.items||[];
-  wrap.innerHTML=items.map((it,i)=>`
-    <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;position:relative">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="background:var(--primary);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</span>
-        <button onclick="dlvDelItem(${i})" style="border:none;background:transparent;cursor:pointer;color:#ccc;font-size:18px;line-height:1">×</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="form-group" style="grid-column:span 2">
-          <label>품목명</label>
-          <input type="text" value="${esc(it.name)}" oninput="dlvUpdItem(${i},'name',this.value)"
-            style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group" style="grid-column:span 2">
-          <label>규격/모델</label>
-          <input type="text" value="${esc(it.spec)}" oninput="dlvUpdItem(${i},'spec',this.value)"
-            style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-        <div class="form-group">
-          <label>단위</label>
-          <select onchange="dlvUpdItem(${i},'unit',this.value)"
-            style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-            ${['EA','SET','개','본','M','kg','식','대','기타'].map(u=>`<option${it.unit===u?' selected':''}>${u}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label>수량</label>
-          <input type="text" inputmode="numeric" value="${comma(it.qty)}"
-            oninput="fmtI(this);dlvUpdItem(${i},'qty',parseN(this.value))"
-            style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%;text-align:right">
-        </div>
-        <div class="form-group" style="grid-column:span 2">
-          <label>단가 (원)</label>
-          <input type="text" inputmode="numeric" value="${comma(it.price)}"
-            oninput="fmtI(this);dlvUpdItem(${i},'price',parseN(this.value))"
-            style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%;text-align:right">
-        </div>
-        <div class="form-group" style="grid-column:span 2">
-          <label>비고</label>
-          <input type="text" value="${esc(it.note||'')}" oninput="dlvUpdItem(${i},'note',this.value)"
-            style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:var(--font);font-size:13px;width:100%">
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-function dlvUpdItem(i,f,v){
-  if(!_dlvData||!_dlvData.items)return;
-  _dlvData.items[i][f]=v;
-  _dlvDirty=true;
-}
-function dlvDelItem(i){
-  if(!_dlvData)return;
-  _dlvData.items.splice(i,1);
-  _dlvDirty=true;
-  renderDlvEditItems();
-}
-function dlvAddItem(){
-  if(!_dlvData)return;
-  _dlvData.items=_dlvData.items||[];
-  _dlvData.items.push({name:'',spec:'',unit:'EA',qty:1,price:0,note:''});
-  _dlvDirty=true;
-  renderDlvEditItems();
-}
-function applyDeliveryEdit(){
-  if(!_dlvData)return;
-  // 수정된 거래처 정보 반영
-  _dlvData.company=document.getElementById('dlv-company').value;
-  _dlvData.person=document.getElementById('dlv-person').value;
-  _dlvData.tel=document.getElementById('dlv-tel').value;
-  _dlvData.rPayment=document.getElementById('dlv-payment').value;
-  _dlvData.optVat=document.getElementById('dlv-opt-vat').checked;
-  _dlvData.optTrunc=document.getElementById('dlv-opt-trunc').checked;
-  _dlvDirty=false;
-  buildDeliveryPreview(_dlvData);
-  // 편집창 닫기
-  document.getElementById('dlv-edit-panel').style.display='none';
-  document.getElementById('btn-dlv-edit').textContent='✏️ 내용 수정';
-  document.getElementById('btn-dlv-edit').style.background='#2d7a4f';
-}
-
-function buildDeliveryPreview(docData){
-  // docData가 전달되면 그 데이터 사용, 없으면 현재 폼에서 읽기
-  const d = docData || getFormData();
-  if(!d.company&&(!d.items||!d.items.length)){
-    alert('먼저 견적서 작성 탭에서 거래처와 품목을 입력해주세요.');return;
-  }
-  // 편집용 데이터 저장 (deep copy)
-  _dlvData = JSON.parse(JSON.stringify(d));
-
-  // 납품일 기본값
-  const dlvDate=document.getElementById('dlv-date').value||new Date().toISOString().slice(0,10);
-  document.getElementById('dlv-date').value=dlvDate;
-
-  // 거래명세서 번호 자동생성
-  let dlvNo=document.getElementById('dlv-no').value;
-  if(!dlvNo){
-    const today=new Date();
-    dlvNo='DL-'+today.getFullYear().toString().slice(2)+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0')+'-'+Math.floor(Math.random()*90+10);
-    document.getElementById('dlv-no').value=dlvNo;
-  }
-  const dlvPlace=document.getElementById('dlv-place').value||'귀사 지정 장소';
-
-  let supply=d.items.reduce((s,it)=>s+it.qty*it.price,0);
-  let discAmt=0;
-  if(d.optDisc){const dv=parseFloat(d.discVal)||0;discAmt=d.discType==='pct'?supply*dv/100:dv;}
-  const after=supply-discAmt;
-  const vat=d.optVat?Math.round(after*.1):0;
-  let total=after+vat;
-  if(d.optTrunc)total=Math.floor(total/10)*10;
-
-  const isGwajang=d.manager.includes('문상록 과장')||d.manager.includes('과장');
-
-  const MIN_ROWS=8;
-  const blankCount=Math.max(0,MIN_ROWS-d.items.length);
-  const blanks=Array(blankCount).fill('').map((_,i)=>{
-    const bg=(d.items.length+i)%2===1?'#f5f7fb':'#ffffff';
-    return `<tr><td colspan="8" style="border:.5px solid #ccc;height:20px;background:${bg}"></td></tr>`;
-  }).join('');
-
-  const rows=d.items.map((it,i)=>{
-    const bg=i%2===1?'#f5f7fb':'#ffffff';
-    const s=`border:.5px solid #ccc;padding:4px 6px;background:${bg}`;
-    return `<tr>
-      <td style="${s};text-align:center">${i+1}</td>
-      <td style="${s}">${it.name}</td>
-      <td style="${s}">${it.spec}</td>
-      <td style="${s};text-align:center">${it.unit}</td>
-      <td style="${s};text-align:right">${comma(it.qty)}</td>
-      <td style="${s};text-align:right">${comma(it.price)}</td>
-      <td style="${s};text-align:right">${comma(it.qty*it.price)}</td>
-      <td style="${s}">${(it.note||'').replace(/\n/g,'<br>')}</td>
-    </tr>`;
-  }).join('');
-
-  const html=`
-    <!-- ① 제목 바 -->
-    <div style="background:#1a3a5c;color:#fff;margin-bottom:12px;padding:12px 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
-      <div style="font-size:8pt;opacity:.8">${COM.name}</div>
-      <div style="font-size:18pt;font-weight:700;letter-spacing:0;text-align:center;">거 래 명 세 서</div>
-      <div style="font-size:7.5pt;opacity:.8;text-align:right;line-height:2">No. ${dlvNo}<br>납품일: ${dlvDate}</div>
-    </div>
-
-    <!-- ② 수신/공급자 2단 -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:8.5pt;table-layout:fixed">
-      <tr>
-        <td style="width:50%;vertical-align:top;padding-right:5px">
-          <table style="width:100%;border-collapse:collapse">
-            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:0">▶ 수 신</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:56px;font-size:8pt;text-align:center;font-weight:600">거래처</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:10pt">${d.company||'-'}</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">담당자</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${d.person||'-'}</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">연락처</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${d.tel||'-'}</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">납품장소</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:8pt">${dlvPlace}</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">견적서 No</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:8pt;color:#888">${d.docNo||'-'}</td></tr>
-          </table>
-        </td>
-        <td style="width:50%;vertical-align:top;padding-left:5px">
-          <div style="position:relative">
-          <table style="width:100%;border-collapse:collapse">
-            <tr><td colspan="2" style="background:#1a3a5c;color:#fff;font-weight:700;padding:5px 10px;font-size:8pt;letter-spacing:0">▶ 공 급 자</td></tr>
-            <tr>
-              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;width:64px;font-size:8pt;text-align:center;font-weight:600;height:22px">상호</td>
-              <td style="border:.5px solid #c5cad6;padding:4px 8px;font-weight:700;font-size:9pt;height:22px">${COM.name}</td>
-            </tr>
-            <tr>
-              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600;height:22px">대표자</td>
-              <td style="border:.5px solid #c5cad6;padding:4px 8px;height:22px;position:relative">${COM.rep}
-                <img src="${STAMP_DAEPYO}" alt="직인" style="position:absolute;right:8px;top:-25px;width:50px;height:50px;object-fit:contain;opacity:0.88;pointer-events:none;z-index:10">
-              </td>
-            </tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">사업자번호</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${COM.biz}</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">주소</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:7.5pt">${COM.addr}</td></tr>
-            <tr>
-              <td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">TEL</td>
-              <td style="border:.5px solid #c5cad6;padding:4px 8px">
-                ${COM.tel} &nbsp;<span style="color:#888;font-size:7.5pt">|</span>&nbsp;
-                <span style="font-size:7.5pt;color:#444">담당: ${isGwajang?COM.mobile_gwajang:COM.mobile_rep}</span>
-              </td>
-            </tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">E-mail</td><td style="border:.5px solid #c5cad6;padding:4px 8px">${COM.email}</td></tr>
-            <tr><td style="background:#f0f3f8;color:#444;padding:4px 8px;border:.5px solid #c5cad6;text-align:center;font-size:8pt;font-weight:600">입금계좌</td><td style="border:.5px solid #c5cad6;padding:4px 8px;font-size:7.5pt">${COM.bank}</td></tr>
-          </table>
-          </div>
-        </td>
-      </tr>
-    </table>
-
-    <!-- ③ 품목 테이블 -->
-    <table style="width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:8px">
-      <thead>
-        <tr>
-          <th style="width:26px;background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;border:.5px solid #1a3a5c">No</th>
-          <th style="background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">품 목 명</th>
-          <th style="width:80px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">규격/모델</th>
-          <th style="width:34px;background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;border:.5px solid #1a3a5c">단위</th>
-          <th style="width:36px;background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;border:.5px solid #1a3a5c">수량</th>
-          <th style="width:76px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">단 가</th>
-          <th style="width:84px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">공급가액</th>
-          <th style="width:60px;background:#1a3a5c;color:#fff;padding:6px 4px;text-align:center;border:.5px solid #1a3a5c">비 고</th>
-        </tr>
-      </thead>
-      <tbody>${rows}${blanks}</tbody>
-    </table>
-
-    <!-- ④ 합계 -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-      <table style="border-collapse:collapse;font-size:8.5pt">
-        <tr>
-          <td style="background:#f0f3f8;color:#1a3a5c;font-weight:700;padding:5px 18px;border:.5px solid #c5cad6;text-align:center">공급가액 합계</td>
-          <td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right;min-width:100px">${comma(supply)} 원</td>
-        </tr>
-        ${d.optDisc?`<tr>
-          <td style="background:#fdf0ef;color:#c0392b;font-weight:700;padding:5px 18px;border:.5px solid #c5cad6;text-align:center">할 인 금 액</td>
-          <td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right;color:#c0392b">- ${comma(Math.round(discAmt))} 원</td>
-        </tr>`:''}
-        <tr>
-          <td style="background:#f0f3f8;color:#1a3a5c;font-weight:700;padding:5px 18px;border:.5px solid #c5cad6;text-align:center">부 가 세 (10%)</td>
-          <td style="padding:5px 18px;border:.5px solid #c5cad6;text-align:right">${d.optVat?comma(vat)+' 원':'미 적 용'}</td>
-        </tr>
-        <tr>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:center;letter-spacing:0">합 계 금 액</td>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;padding:7px 18px;border:.5px solid #1a3a5c;text-align:right;font-size:10pt">${comma(total)} 원</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- ⑤ 서명란 -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-      <table style="border-collapse:collapse;font-size:8.5pt;table-layout:fixed;width:270px">
-        <colgroup><col style="width:90px"><col style="width:90px"><col style="width:90px"></colgroup>
-        <tr>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">담 당</td>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">${isGwajang?'과 장':'대 표'}</td>
-          <td style="background:#1a3a5c;color:#fff;font-weight:700;text-align:center;padding:5px 0;border:.5px solid #1a3a5c;letter-spacing:0">확 인</td>
-        </tr>
-        <tr>
-          <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle;font-size:9pt">${d.manager}</td>
-          <td style="border:.5px solid #c5cad6;height:70px;text-align:center;vertical-align:middle">
-            <img style="width:${isGwajang?36:46}px;height:${isGwajang?36:46}px;object-fit:contain;display:block;margin:auto" src="${isGwajang?STAMP_GWAJANG:STAMP_DAEPYO}" alt="도장">
-          </td>
-          <td style="border:.5px solid #c5cad6;height:70px"></td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- ⑥ 결재조건 -->
-    ${d.rPayment?`<div style="margin-bottom:10px;font-size:8pt;color:#555;padding:6px 10px;background:#f8f6f0;border:.5px solid #d0cdc4;border-radius:2px">
-      <strong style="color:#1a3a5c">결재조건:</strong> ${d.rPayment}
-    </div>`:''}
-
-    <!-- ⑦ 하단 회사정보 -->
-    <div style="margin-top:10px;padding-top:7px;border-top:2px solid #1a3a5c;font-size:7.5pt;color:#666;text-align:center;line-height:2">
-      <strong style="color:#1a3a5c;font-size:8.5pt">${COM.name}</strong>
-      &nbsp;|&nbsp; 사업자등록번호: ${COM.biz} &nbsp;|&nbsp; 대표: ${COM.rep}<br>
-      ${COM.addr} &nbsp;|&nbsp; TEL: ${COM.tel} &nbsp;|&nbsp; E-mail: ${COM.email}<br>
-      입금계좌: ${COM.bank}
-    </div>
-  `;
-  document.getElementById('delivery-print-area').innerHTML=html;
-}
-
-function printDelivery(){
-  const area=document.getElementById('delivery-print-area');
-  const txt=area.innerText||area.textContent||'';
-  if(!txt.trim()||txt.includes('견적서에서 불러오기')){
-    alert('먼저 [견적서에서 불러오기] 버튼을 눌러 거래명세서를 생성해주세요.');return;
-  }
-  const d=getFormData();
-  const company=d.company||'거래처';
-  const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
-  const pdfName=firstItem?company+'_'+firstItem+'_거래명세서':company+'_거래명세서';
-
-  // 인쇄용 팝업 윈도우 생성
-  const pw=window.open('','_blank','width=900,height=700');
-  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0;font-family:'Noto Sans KR','맑은 고딕','Malgun Gothic',sans-serif;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-      body{background:#fff;padding:13mm 14mm 10mm}
-      @page{size:A4 portrait;margin:0}
-    </style>
-    <title>${pdfName}</title>
-  </head><body>${area.innerHTML}</body></html>`);
-  pw.document.close();
-  pw.onload=function(){pw.focus();pw.print();setTimeout(()=>pw.close(),1000);};
-}
-
-// ════════════════════════════════════
 // 모달
 // ════════════════════════════════════
 function openModal(id){document.getElementById(id).classList.add('open');}
@@ -2457,12 +2025,23 @@ async function loadFirestoreDocs(){
 
 async function loadFirestoreCusts(){
   try{
-    const {collection,getDocs}=window._fbFns;
+    const {collection,getDocs,doc,deleteDoc}=window._fbFns;
     const db=window._db;
     if(!db) return;
     const snap=await getDocs(collection(db,'customers'));
+    const raw=[];
+    snap.forEach(d=>{raw.push(d.data());});
+    // 업체명 기준 중복 제거 (id 큰 것 = 최근 저장본만 유지)
+    const kept={};
     _custsCache=[];
-    snap.forEach(d=>{_custsCache.push(d.data());});
+    raw.sort((a,b)=>b.id-a.id).forEach(c=>{
+      const key=(c.company||'').trim();
+      if(!kept[key]){kept[key]=true;_custsCache.push(c);}
+      else{
+        // 중복 항목 조용히 삭제
+        deleteDoc(doc(collection(db,'customers'),String(c.id))).catch(()=>{});
+      }
+    });
   }catch(e){console.log('거래처 로드 실패',e);}
 }
 
@@ -2471,236 +2050,6 @@ async function saveCustToFirestore(cust){
     const {doc,setDoc,collection}=window._fbFns;
     await setDoc(doc(collection(window._db,'customers'),String(cust.id)),cust);
   }catch(e){console.log('거래처 저장 실패',e);}
-}
-
-// ════════════════════════════════════
-// 거래명세서 Firestore
-// ════════════════════════════════════
-async function loadFirestoreDeliveries(){
-  try{
-    const {collection,getDocs,query,orderBy}=window._fbFns;
-    const db=window._db;
-    if(!db)return;
-    const q=query(collection(db,'deliveries'),orderBy('savedAt','desc'));
-    const snap=await getDocs(q);
-    _dlvCache={};
-    snap.forEach(d=>{_dlvCache['dlv_'+d.id]=d.data();});
-  }catch(e){console.log('거래명세서 로드 실패',e);}
-}
-
-async function saveDelivery(){
-  if(!_dlvData){alert('먼저 견적서에서 불러와서 거래명세서를 생성해주세요.');return;}
-  const dlvNo=document.getElementById('dlv-no').value;
-  const dlvDate=document.getElementById('dlv-date').value;
-  const dlvPlace=document.getElementById('dlv-place').value;
-  if(!dlvNo){alert('거래명세서 번호가 없습니다. 먼저 불러오기 해주세요.');return;}
-  const data={
-    ..._dlvData,
-    dlvNo, dlvDate, dlvPlace,
-    savedAt:new Date().toISOString(),
-    fileName:`${_dlvData.company||'거래처'}_거래명세서_${dlvNo}`
-  };
-  try{
-    const {doc,setDoc,collection}=window._fbFns;
-    await setDoc(doc(collection(window._db,'deliveries'),dlvNo),data);
-    _dlvCache['dlv_'+dlvNo]=data;
-    renderDlvDocs();
-    alert('✅ 거래명세서 저장 완료!\n'+data.fileName);
-  }catch(e){alert('❌ 저장 실패: '+e.message);}
-}
-
-function loadDlvDoc(key){
-  const d=_dlvCache[key];
-  if(!d)return;
-  // 입력 필드 복원
-  document.getElementById('dlv-date').value=d.dlvDate||'';
-  document.getElementById('dlv-place').value=d.dlvPlace||'';
-  document.getElementById('dlv-no').value=d.dlvNo||'';
-  // 거래명세서 탭으로 이동 + 빌드
-  const btn=Array.from(document.querySelectorAll('#appbar .tabs button')).find(b=>b.onclick?.toString().includes('delivery'));
-  showTab('delivery',btn);
-  buildDeliveryPreview(d);
-}
-
-async function delDlvDoc(key){
-  if(!confirm('거래명세서를 삭제하시겠습니까?'))return;
-  const dlvNo=key.replace('dlv_','');
-  try{
-    const {doc,deleteDoc,collection}=window._fbFns;
-    await deleteDoc(doc(collection(window._db,'deliveries'),dlvNo));
-    delete _dlvCache[key];
-    renderDlvDocs();
-  }catch(e){alert('삭제 실패: '+e.message);}
-}
-
-// ════════════════════════════════════
-// 거래명세서 PDF → Cloudinary 공통 함수
-// ════════════════════════════════════
-async function buildDeliveryPdfBlob(){
-  // 미리보기가 있는지 확인
-  const area=document.getElementById('delivery-print-area');
-  const txt=area.innerText||'';
-  if(!txt.trim()||txt.includes('견적서에서 불러오기')) throw new Error('거래명세서를 먼저 생성해주세요.');
-
-  const {jsPDF}=window.jspdf;
-  const viewportMeta=document.querySelector('meta[name=viewport]');
-  const prevViewport=viewportMeta.content;
-  viewportMeta.content='width=1024';
-  await new Promise(r=>setTimeout(r,300));
-  const prevStyle=area.getAttribute('style')||'';
-  area.style.transform='none';
-  area.style.width='794px';
-  await new Promise(r=>setTimeout(r,300));
-  const canvas=await html2canvas(area,{scale:3,useCORS:true,allowTaint:true,imageTimeout:0,backgroundColor:'#ffffff',width:794,windowWidth:1024});
-  area.setAttribute('style',prevStyle);
-  viewportMeta.content=prevViewport;
-  const imgData=canvas.toDataURL('image/jpeg',0.95);
-  const pdf=new jsPDF('p','mm','a4');
-  const pageW=pdf.internal.pageSize.getWidth();
-  const pageH=pdf.internal.pageSize.getHeight();
-  const imgH=(canvas.height*pageW)/canvas.width;
-  if(imgH<=pageH){pdf.addImage(imgData,'JPEG',0,0,pageW,imgH);}
-  else{let y=0;while(y<imgH){pdf.addImage(imgData,'JPEG',0,-y,pageW,imgH);y+=pageH;if(y<imgH)pdf.addPage();}}
-  return pdf.output('blob');
-}
-
-async function uploadDeliveryPdf(){
-  const pdfBlob=await buildDeliveryPdfBlob();
-  const CLOUD_NAME='dlehtyeg6';
-  const UPLOAD_PRESET='hwacheon_quotes';
-  const ts=Date.now();
-  const dlvNo=document.getElementById('dlv-no').value||'DL';
-  const company=_dlvData?.company||'거래처';
-  const publicId=`deliveries/${dlvNo}_${company}_거래명세서_${ts}`;
-  const formData=new FormData();
-  formData.append('file',pdfBlob,'delivery.pdf');
-  formData.append('upload_preset',UPLOAD_PRESET);
-  formData.append('public_id',publicId);
-  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,{method:'POST',body:formData});
-  const json=await res.json();
-  if(json.secure_url) return json.secure_url;
-  throw new Error('Cloudinary 업로드 실패');
-}
-
-// ════════════════════════════════════
-// 거래명세서 발송 모달
-// ════════════════════════════════════
-let _dlvSendMode = 'email';
-
-function sendDeliveryEmail(){
-  if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
-  _openDlvSendModal('email');
-}
-
-function sendDeliverySMS(){
-  if(!_dlvData){alert('먼저 거래명세서를 생성해주세요.');return;}
-  _openDlvSendModal('sms');
-}
-
-function _openDlvSendModal(mode){
-  const isGwajang=(_dlvData?.manager||'').includes('과장');
-  const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
-  const isSMS=mode==='sms';
-  const isBoth=mode==='both';
-  document.getElementById('dlv-send-docno2').textContent=document.getElementById('dlv-no').value||'';
-  document.getElementById('dlv-send-company2').textContent=_dlvData?.company||'';
-  document.getElementById('dlv-send-person').value=_dlvData?.person||'';
-  document.getElementById('dlv-send-email').value=_dlvData?.email||'';
-  document.getElementById('dlv-send-tel').value=_dlvData?.tel||'';
-  document.getElementById('dlv-chk-email').checked=!isSMS;
-  document.getElementById('dlv-chk-sms').checked=isSMS||isBoth;
-  const defaultMsg=`[화천이티씨]\n거래명세서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
-  document.getElementById('dlv-send-sms-text').value=defaultMsg;
-  dlvToggleSendOptions();
-  openModal('modal-dlv-send');
-}
-
-function dlvToggleSendOptions(){
-  const smsChecked = document.getElementById('dlv-chk-sms').checked;
-  const emailChecked = document.getElementById('dlv-chk-email').checked;
-  document.getElementById('dlv-sms-content-wrap').style.display = smsChecked ? '' : 'none';
-  // 옵션 카드 테두리 강조
-  document.getElementById('dlv-email-option').style.borderColor = emailChecked ? '#1565c0' : 'var(--border)';
-  document.getElementById('dlv-sms-option').style.borderColor   = smsChecked   ? '#6a1b9a' : 'var(--border)';
-  // 발송 버튼 텍스트
-  const both = emailChecked && smsChecked;
-  const btn  = document.getElementById('dlv-send-confirm-btn');
-  btn.textContent = both ? '📤 이메일 + 문자 발송' : emailChecked ? '📧 이메일 발송' : '📱 문자 발송';
-}
-
-async function confirmDlvSend(){
-  const person   = document.getElementById('dlv-send-person').value.trim();
-  const email    = document.getElementById('dlv-send-email').value.trim();
-  const tel      = document.getElementById('dlv-send-tel').value.trim();
-  const smsText  = document.getElementById('dlv-send-sms-text').value.trim();
-  const doEmail  = document.getElementById('dlv-chk-email').checked;
-  const doSMS    = document.getElementById('dlv-chk-sms').checked;
-
-  if(!doEmail && !doSMS){ alert('이메일 또는 문자 중 하나 이상 선택해주세요.'); return; }
-  if(doEmail && !email) { alert('이메일 주소를 입력해주세요.'); return; }
-  if(doSMS   && !tel)   { alert('연락처를 입력해주세요.'); return; }
-
-  closeModal('modal-dlv-send');
-
-  const isGwajang=(_dlvData.manager||'').includes('과장');
-  const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
-  const items=_dlvData.items||[];
-  const supply=items.reduce((s,it)=>s+(it.qty||0)*(it.price||0),0);
-  const vat=_dlvData.optVat!==false?Math.round(supply*.1):0;
-  const total=supply+vat;
-
-  // ── 이메일 발송 ──
-  if(doEmail){
-    setBadge('PDF 생성 중...');
-    let pdfUrl='';
-    try{ pdfUrl=await uploadDeliveryPdf(); }catch(e){ console.log('PDF 실패',e); }
-    const params={
-      to_email: email,
-      to_name:  person||_dlvData.company||'',
-      company:  _dlvData.company||'',
-      doc_no:   document.getElementById('dlv-no').value,
-      doc_date: document.getElementById('dlv-date').value,
-      total:    comma(total),
-      manager:  isGwajang?'문상록 과장':'문형록 대표',
-      manager_mobile: mobile,
-      pdf_url:  pdfUrl||'(링크 생성 실패 - 별도 전달 드립니다)',
-    };
-    try{
-      await new Promise((res,rej)=>emailjs.send('service_1kdhkid','template_fdtn3vj',params).then(res).catch(rej));
-      setBadge('이메일 완료 ✓');
-      alert('✅ 이메일 발송 완료!\n'+email);
-    }catch(e){
-      setBadge('발송 실패');
-      alert('❌ 이메일 발송 실패: '+(e.text||e.message||e));
-    }
-  }
-
-  // ── 문자 발송 ──
-  if(doSMS){
-    await _sendSMSRaw(tel, smsText);
-  }
-}
-
-async function _sendSMSRaw(tel,msg){
-  const API_KEY='NCSFE0G6RDWZYKWE';
-  const API_SECRET='VFP7K7WMPKQYPWZ8ZTJW8CYCUIPQTAA4';
-  const from='01054246147';
-  const date=new Date().toISOString();
-  const salt=Math.random().toString(36).substring(2,12);
-  const enc=new TextEncoder();
-  const keyData=await crypto.subtle.importKey('raw',enc.encode(API_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const sig=await crypto.subtle.sign('HMAC',keyData,enc.encode(date+salt));
-  const signature=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  try{
-    const res=await fetch('https://api.coolsms.co.kr/messages/v4/send',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`HMAC-SHA256 apiKey=${API_KEY}, date=${date}, salt=${salt}, signature=${signature}`},
-      body:JSON.stringify({message:{to:tel.replace(/-/g,''),from,text:msg}}),
-    });
-    const json=await res.json();
-    if(res.ok) alert('✅ 문자 발송 완료!\n'+tel);
-    else alert('❌ 문자 발송 실패: '+(json.errorMessage||JSON.stringify(json)));
-  }catch(e){alert('❌ 문자 오류: '+e.message);}
 }
 
 // ════════════════════════════════════
