@@ -7,17 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
 <script>
-window._checkDraft = function(){
-  const draft = localStorage.getItem('htc_draft');
-  if(draft){
-    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-      if(typeof loadDraft==='function') loadDraft();
-    }else{
-      localStorage.removeItem('htc_draft');
-      if(typeof newDoc==='function') newDoc();
-    }
-  }
-};
+window._checkDraft = function(){};
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -126,8 +116,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
 .ab-save{background:rgba(255,255,255,.18)}
 .ab-logout{padding:6px 9px;font-size:14px;background:rgba(255,255,255,.08)}
 .ab-install{background:var(--accent);border-color:var(--accent)}
-#autosave-badge{font-size:10px;color:rgba(255,255,255,.55);white-space:nowrap;flex-shrink:1;
-  overflow:hidden;text-overflow:ellipsis;max-width:60px}
+
 .tab-panel{display:none}.tab-panel.active{display:block}
 #panel-quote{padding:12px 14px;max-width:1100px;margin:0 auto}
 /* 새 폼 그룹 */
@@ -279,7 +268,6 @@ table.item-table tbody tr:hover{background:#fafaf7}
 .cust-card .cust-detail{font-size:11px;color:var(--muted);line-height:1.7}
 .cust-card .cust-actions{display:flex;gap:6px;margin-top:8px}
 /* 자동저장 */
-#autosave-badge{font-size:11px;color:rgba(255,255,255,.6);margin-right:10px}
 /* 모달 */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
   z-index:500;align-items:center;justify-content:center}
@@ -389,7 +377,6 @@ table.item-table tbody tr:hover{background:#fafaf7}
   #appbar .logo{font-size:13px}
   .ab-btn{padding:5px 8px;font-size:11px}
   .ab-logout{padding:5px 8px;font-size:13px}
-  #autosave-badge{display:none}
 
   /* 패널 */
   #panel-quote{padding:12px}
@@ -504,7 +491,6 @@ if('serviceWorker' in navigator){
   <div class="appbar-top">
     <div class="logo">화천<span>ETC</span> 견적서</div>
     <div class="appbar-right">
-      <span id="autosave-badge">● 저장됨</span>
       <button id="install-btn" onclick="installApp()" class="ab-btn ab-install" style="display:none">📲</button>
     </div>
   </div>
@@ -839,9 +825,11 @@ if('serviceWorker' in navigator){
 
 <!-- 거래처 관리 -->
 <div id="panel-customers" class="tab-panel">
-  <div style="display:flex;gap:8px;margin-bottom:12px">
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
     <button class="btn-sm btn-primary" onclick="openSaveCust()">＋ 거래처 추가</button>
+    <input type="text" id="cust-search-main" placeholder="🔍 거래처 검색" oninput="renderCustomers()" style="border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-family:var(--font);font-size:13px;flex:1;min-width:120px">
   </div>
+  <div id="dup-cust-banner" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
   <div class="customer-list" id="customer-list"></div>
 </div>
 
@@ -940,7 +928,7 @@ const COM={
   mobile_gwajang:'010-6231-7628',
 };
 
-let items=[],docId=null,autoTimer=null;
+let items=[],docId=null;
 let sItems=[],sDocId=null; // 거래명세서 전용
 let currentDocType='quote'; // 'quote' | 'statement'
 let _docsCache={}, _custsCache=[];
@@ -949,24 +937,15 @@ let _docsCache={}, _custsCache=[];
 // 초기화
 // ════════════════════════════════════
 function _init(){
-  const _draft = localStorage.getItem('htc_draft');
-  if(_draft){
-    if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-      loadDraft();
-    }else{
-      localStorage.removeItem('htc_draft');
-      newDoc();
-    }
-  } else {
-    document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
-    genDocNo();
-    renderItems();
-    calcTotals();
-  }
+  document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
+  genDocNo();
+  renderItems();
+  calcTotals();
   // 거래명세서 초기화
   genSDocNo();
   document.getElementById('s-date').value=new Date().toISOString().slice(0,10);
-  setInterval(autoSave,30000);
+  // 거래처 중복 자동 정리 (앱 로드 후 캐시 채워지면 실행)
+  setTimeout(autoCleanDupCusts, 5000);
 }
 if(document.readyState==='complete'||document.readyState==='interactive'){
   setTimeout(_init, 0);
@@ -1313,7 +1292,7 @@ async function saveStatementDoc(){
     await setDoc(doc(collection(window._db,'quotes'),d.docNo),data);
     setBadge('저장됨 ✓');
   }catch(e){setBadge('⚠️ 오프라인 저장');console.log('Firestore 저장 실패',e);}
-  if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
+  if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company&&(c.person||'')===(d.person||'')))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
   alert('저장되었습니다:\n'+fileName);
 }
 // 거래명세서 미리보기 빌드
@@ -1749,21 +1728,11 @@ function saveDoc(){
   const fileName = firstItem
     ? `${company}_${firstItem}_견적서`
     : `${company}_견적서`;
-  localStorage.removeItem('htc_draft');
   setBadge('저장됨 ✓');
   alert('저장되었습니다:\n' + fileName);
 }
-function autoSave(){
-  const d=getFormData();
-  localStorage.setItem('htc_draft',JSON.stringify({...d,savedAt:new Date().toISOString()}));
-  setBadge('자동저장 완료');setTimeout(()=>setBadge('저장됨'),2000);
-}
-function sched(){clearTimeout(autoTimer);setBadge('저장 대기중...');autoTimer=setTimeout(autoSave,3000);}
-function loadDraft(){
-  const s=localStorage.getItem('htc_draft');
-  if(s){try{setFormData(JSON.parse(s));}catch(e){}}
-}
-function setBadge(m){document.getElementById('autosave-badge').textContent='● '+m;}
+function sched(){}
+function setBadge(m){}
 function newDoc(){
   items=[];docId=null;
   ['c-company','c-person','c-tel','c-addr','q-manager-custom',
@@ -1869,16 +1838,16 @@ function saveCust(){
   if(!name){alert('거래처명을 입력해주세요.');return;}
   const custs=getCusts();
   const nc={id:Date.now(),company:name,
-    person:document.getElementById('mc-person').value,
+    person:document.getElementById('mc-person').value.trim(),
     tel:document.getElementById('mc-tel').value,
     email:document.getElementById('mc-email').value,
     addr:document.getElementById('mc-addr').value};
-  const ex=custs.findIndex(c=>c.company===name);
-  if(ex>=0){if(confirm('이미 저장된 거래처입니다. 업데이트하시겠습니까?'))custs[ex]={...custs[ex],...nc};else return;}
-  else custs.push(nc);
+  // 거래처명+담당자 동일한 경우 자동 업데이트 (id 유지)
+  const ex=custs.findIndex(c=>c.company===name&&(c.person||'')===nc.person);
+  if(ex>=0) nc.id=custs[ex].id;
   saveCustToFirestore(nc);
   closeModal('modal-save-cust');
-  alert('저장되었습니다. (실시간 동기화 중...)');
+  alert('저장되었습니다.');
 }
 function openLoadCust(){renderCustSearch();openModal('modal-load-cust');}
 function renderCustSearch(){
@@ -1908,15 +1877,93 @@ function applyCust(id){
   closeModal('modal-load-cust');
 }
 function renderCustomers(){
-  const custs=getCusts();const list=document.getElementById('customer-list');
+  const q=(document.getElementById('cust-search-main')?.value||'').toLowerCase();
+  let custs=getCusts();
+  if(q) custs=custs.filter(c=>(c.company||'').toLowerCase().includes(q)||(c.person||'').toLowerCase().includes(q));
+  const list=document.getElementById('customer-list');
   if(!custs.length){list.innerHTML='<div class="empty-msg">저장된 거래처가 없습니다.</div>';return;}
-  list.innerHTML=custs.map(c=>`<div class="cust-card">
-    <div class="cust-name">${c.company}</div>
-    <div class="cust-detail">${c.person?`담당: ${c.person}<br>`:''}${c.tel?`TEL: ${c.tel}<br>`:''}${c.email?`Email: ${c.email}<br>`:''}</div>
-    <div class="cust-actions">
-      <button class="btn-sm btn-primary" onclick="applyCustSwitch(${c.id})">적용</button>
-      <button class="btn-sm btn-danger" onclick="delCust(${c.id})">삭제</button>
-    </div></div>`).join('');
+
+  // 중복 키 계산 (거래처명+담당자 동일한 것)
+  const dupKeys=new Set();
+  const seen={};
+  getCusts().forEach(c=>{
+    const key=(c.company||'').trim()+'||'+(c.person||'').trim();
+    if(seen[key]) dupKeys.add(key);
+    else seen[key]=true;
+  });
+
+  list.innerHTML=custs.map(c=>{
+    const key=(c.company||'').trim()+'||'+(c.person||'').trim();
+    const isDup=dupKeys.has(key);
+    return `<div class="cust-card" style="${isDup?'border-color:#ffc107;background:#fffdf0':''}">
+      ${isDup?'<div style="font-size:11px;color:#856404;font-weight:700;margin-bottom:4px">⚠️ 중복</div>':''}
+      <div class="cust-name">${c.company}</div>
+      <div class="cust-detail">${c.person?`담당: ${c.person}<br>`:''}${c.tel?`TEL: ${c.tel}<br>`:''}${c.email?`Email: ${c.email}<br>`:''}</div>
+      <div class="cust-actions">
+        <button class="btn-sm btn-primary" onclick="applyCustSwitch(${c.id})">적용</button>
+        <button class="btn-sm btn-danger" onclick="delCust(${c.id})">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function findDupCusts(){
+  const custs=getCusts();
+  const groups={};
+  custs.forEach(c=>{
+    const key=(c.company||'').trim()+'||'+(c.person||'').trim();
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(c);
+  });
+  const dupGroups=Object.entries(groups).filter(([k,v])=>v.length>1);
+  const banner=document.getElementById('dup-cust-banner');
+  if(!dupGroups.length){
+    banner.style.display='block';
+    banner.innerHTML='✅ 중복된 거래처가 없습니다.';
+    setTimeout(()=>{banner.style.display='none';},3000);
+    return;
+  }
+  const totalDup=dupGroups.reduce((s,[,v])=>s+v.length-1,0);
+  banner.style.display='block';
+  banner.innerHTML=`
+    <div style="margin-bottom:8px;font-weight:700">⚠️ 중복 거래처 ${totalDup}건 발견 — 각 그룹에서 가장 최근 1건만 남기고 나머지를 삭제합니다.</div>
+    ${dupGroups.map(([k,v])=>{
+      const [company,person]=k.split('||');
+      return `<div style="font-size:12px;color:#555;margin-bottom:2px">· ${company}${person?' (담당: '+person+')':''} → ${v.length}건 중 ${v.length-1}건 삭제</div>`;
+    }).join('')}
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn-sm btn-danger" onclick="delDupCusts()">중복 삭제 실행</button>
+      <button class="btn-sm" onclick="document.getElementById('dup-cust-banner').style.display='none'">닫기</button>
+    </div>`;
+}
+
+async function delDupCusts(){
+  const custs=getCusts();
+  const groups={};
+  custs.forEach(c=>{
+    const key=(c.company||'').trim()+'||'+(c.person||'').trim();
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(c);
+  });
+  const toDelete=[];
+  Object.values(groups).forEach(arr=>{
+    if(arr.length<=1) return;
+    // id 가장 큰 것(최근 저장) 1개만 남기고 나머지 삭제
+    const sorted=[...arr].sort((a,b)=>b.id-a.id);
+    sorted.slice(1).forEach(c=>toDelete.push(c));
+  });
+  if(!toDelete.length){alert('삭제할 중복이 없습니다.');return;}
+  if(!confirm(`중복 거래처 ${toDelete.length}건을 삭제하시겠습니까?`))return;
+  const {doc,deleteDoc,collection}=window._fbFns;
+  for(const c of toDelete){
+    try{
+      await deleteDoc(doc(collection(window._db,'customers'),String(c.id)));
+      _custsCache=_custsCache.filter(x=>x.id!==c.id);
+    }catch(e){console.log('삭제 실패',c.id,e);}
+  }
+  document.getElementById('dup-cust-banner').style.display='none';
+  renderCustomers();
+  alert(`✅ 중복 거래처 ${toDelete.length}건 삭제 완료`);
 }
 function applyCustSwitch(id){applyCust(id);showTab('quote',document.querySelector('#appbar .tabs button'));}
 async function delCust(id){
@@ -2171,17 +2218,7 @@ function doLogin(){
       // 명시적으로 1회 로드도 실행
       loadFirestoreDocs();
       loadFirestoreCusts();
-      // 임시저장 있으면 팝업
-      const draft=localStorage.getItem('htc_draft');
-      if(draft){
-        if(confirm('이전에 작업하던 견적서가 있습니다.\n이어서 작업하시겠습니까?\n\n(취소 시 새 문서로 시작합니다)')){
-          loadDraft();
-        }else{
-          localStorage.removeItem('htc_draft');
-          newDoc();
-        }
-      }
-    })
+        })
     .catch(e=>{
       err.textContent='이메일 또는 비밀번호가 올바르지 않습니다.';
       err.style.display='block';
@@ -2206,7 +2243,6 @@ async function saveDoc(){
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
   const fileName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
   const data={...d,savedAt:new Date().toISOString(),fileName};
-  localStorage.removeItem('htc_draft');
   setBadge('저장 중...');
   // Firestore 저장
   try{
@@ -2218,15 +2254,8 @@ async function saveDoc(){
     setBadge('⚠️ 오프라인 저장');
     console.log('Firestore 저장 실패',e);
   }
-  // 거래처 자동 등록
-  if(d.company){
-    const custs=getCusts();
-    const exists=custs.find(c=>c.company===d.company);
-    if(!exists){
-      const newC={id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:getEmail(),addr:''};
-      saveCustToFirestore(newC);
-    }
-  }
+  // 거래처 자동 등록 (거래처명+담당자 조합으로 중복 방지)
+  if(d.company) autoRegisterCust(d.company, d.person, d.tel, getEmail());
   alert('저장되었습니다:\n'+fileName);
 }
 
@@ -2261,6 +2290,41 @@ async function loadFirestoreCusts(){
   }catch(e){console.log('거래처 로드 실패',e);}
 }
 
+// 앱 로드 시 자동 중복 거래처 정리
+async function autoCleanDupCusts(){
+  const custs=getCusts();
+  if(!custs.length) return;
+  const groups={};
+  custs.forEach(c=>{
+    const key=(c.company||'').trim()+'||'+(c.person||'').trim();
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(c);
+  });
+  const toDelete=[];
+  Object.values(groups).forEach(arr=>{
+    if(arr.length<=1) return;
+    const sorted=[...arr].sort((a,b)=>b.id-a.id);
+    sorted.slice(1).forEach(c=>toDelete.push(c));
+  });
+  if(!toDelete.length) return;
+  const {doc,deleteDoc,collection}=window._fbFns;
+  for(const c of toDelete){
+    try{
+      await deleteDoc(doc(collection(window._db,'customers'),String(c.id)));
+      _custsCache=_custsCache.filter(x=>x.id!==c.id);
+    }catch(e){console.log('중복 거래처 자동 삭제 실패',c.id,e);}
+  }
+  console.log(`중복 거래처 ${toDelete.length}건 자동 정리 완료`);
+}
+
+// 거래처 자동 등록 공통 함수 - 거래처명+담당자 조합으로 중복 방지
+function autoRegisterCust(company, person, tel, email){
+  if(!company) return;
+  const custs=getCusts();
+  const ex=custs.find(c=>c.company===company&&(c.person||'')===(person||''));
+  if(ex) return; // 이미 동일한 거래처+담당자 존재
+  saveCustToFirestore({id:Date.now(),company,person:person||'',tel:tel||'',email:email||'',addr:''});
+}
 async function saveCustToFirestore(cust){
   try{
     const {doc,setDoc,collection}=window._fbFns;
@@ -2291,15 +2355,8 @@ async function sendEmail(){
   const isGwajang=d.manager.includes('문상록 과장')||d.manager.includes('과장');
   const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
 
-  // 거래처 자동 등록
-  if(d.company){
-    const custs=getCusts();
-    const exists=custs.find(c=>c.company===d.company);
-    if(!exists){
-      const newC={id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''};
-      saveCustToFirestore(newC);
-    }
-  }
+  // 거래처 자동 등록 (거래처명+담당자 조합으로 중복 방지)
+  if(d.company) autoRegisterCust(d.company, d.person, d.tel, d.email);
 
   // PDF 생성 및 Cloudinary 업로드
   let pdfUrl = '';
