@@ -944,6 +944,8 @@ function _init(){
   // 거래명세서 초기화
   genSDocNo();
   document.getElementById('s-date').value=new Date().toISOString().slice(0,10);
+  // 앱 시작 시 거래처 미리 로드
+  loadFirestoreCusts();
   // 거래처 중복 자동 정리 (앱 로드 후 캐시 채워지면 실행)
   setTimeout(autoCleanDupCusts, 5000);
 }
