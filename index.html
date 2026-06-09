@@ -1442,7 +1442,7 @@ async function sendStatementEmail(){
     const res=await fetch('https://api.cloudinary.com/v1_1/dlehtyeg6/raw/upload',{method:'POST',body:formData});
     const json=await res.json();if(json.secure_url)pdfUrl=json.secure_url;
   }catch(e){console.log('PDF 생성 실패',e);}
-  const params={to_email:d.email,to_name:d.person||d.company,company:d.company,doc_no:d.docNo,doc_date:d.date,total:comma(total),manager:isGwajang?'문상록 과장':'문형록 대표',manager_mobile:mobile,pdf_url:pdfUrl||'(링크 생성 실패)'};
+  const params={to_email:d.email,to_name:d.person||d.company,company:d.company,doc_no:d.docNo,doc_date:d.date,total:comma(total),manager:isGwajang?'문상록 과장':'문형록 대표',manager_mobile:mobile,pdf_url:pdfUrl||'(링크 생성 실패)',doc_type:'거래명세서'};
   emailjs.send('service_1kdhkid','template_fdtn3vj',params)
     .then(()=>{
       alert('✅ 이메일 발송 완료!\n'+d.email);
@@ -2474,6 +2474,7 @@ async function sendEmail(){
     manager:isGwajang?'문상록 과장':'문형록 대표',
     manager_mobile:mobile,
     pdf_url:pdfUrl||'(링크 생성 실패 - 별도 전달 드립니다)',
+    doc_type:'견적서',
   };
 
   emailjs.send('service_1kdhkid','template_fdtn3vj',params)
