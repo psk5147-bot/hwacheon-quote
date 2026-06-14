@@ -766,10 +766,12 @@ if('serviceWorker' in navigator){
     <div class="section-card">
       <div class="card-head" style="background:#e8f0fe">📦 품목</div>
       <div class="item-search-bar">
-        <input id="s-item-search" type="text" placeholder="🔍 품목명 또는 규격 검색..." oninput="filterSDB()" onblur="setTimeout(hideSDBPopup,200)">
-        <button class="btn-sm btn-primary" onclick="addEmptyRowS()">＋ 빈 행 추가</button>
-        <button class="btn-sm btn-danger" onclick="clearItemsS()">전체삭제</button>
-        <div id="s-db-popup" class="db-popup" style="display:none"></div>
+        <div style="position:relative;flex:1;min-width:0">
+          <input id="s-item-search" type="text" placeholder="🔍 품목명 또는 규격 검색..." oninput="filterSDB()" onblur="setTimeout(hideSDBPopup,200)" style="width:100%">
+          <div id="s-db-popup" class="db-popup" style="display:none"></div>
+        </div>
+        <button class="btn-sm btn-primary" onclick="addEmptyRowS()" style="flex-shrink:0;white-space:nowrap">＋ 빈 행 추가</button>
+        <button class="btn-sm btn-danger" onclick="clearItemsS()" style="flex-shrink:0;white-space:nowrap">전체삭제</button>
       </div>
       <div id="s-item-table-wrap" style="overflow-x:auto">
         <table class="item-table">
