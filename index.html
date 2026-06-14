@@ -80,9 +80,7 @@ window._checkDraft = function(){};
     onSnapshot(collection(db2,'customers'), (snap) => {
       _custsCache = [];
       snap.forEach(d => { _custsCache.push(d.data()); });
-      if(document.getElementById('panel-customers')?.classList.contains('active')){
-        if(typeof renderCustomers==='function') renderCustomers();
-      }
+      if(typeof renderCustomers==='function') renderCustomers();
     });
   }catch(e){ console.log('거래처 리스너 실패', e); }
 </script>
@@ -975,7 +973,7 @@ function showTab(name,btn){
   if(btn) btn.classList.add('active');
   if(name==='preview'){buildPreviewForType();setTimeout(scalePreview,100);}
   if(name==='docs'){loadFirestoreDocs().then(renderDocs);}
-  if(name==='customers'){loadFirestoreCusts().then(renderCustomers);}
+  if(name==='customers'){renderCustomers();}
   if(name==='statement'){renderSItems();calcSTotals();}
 }
 
