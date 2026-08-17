@@ -41,6 +41,7 @@ window._checkDraft = function(){};
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>emailjs.init("e8rK4U5i2wL4nP2aE");</script>
 <script type="module">
   import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -588,6 +589,9 @@ if('serviceWorker' in navigator){
         <div id="db-popup" class="db-popup" style="display:none"></div>
       </div>
       <button class="btn-sm btn-primary" onclick="addEmptyRow()" style="flex-shrink:0;white-space:nowrap">＋ 추가</button>
+      <button class="btn-sm" onclick="document.getElementById('excel-upload-input').click()" style="flex-shrink:0;white-space:nowrap">📊 엑셀 업로드</button>
+      <button class="btn-sm" onclick="downloadExcelTemplate()" style="flex-shrink:0;white-space:nowrap;font-size:11px;color:var(--muted)">양식 다운로드</button>
+      <input id="excel-upload-input" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelUpload(event)">
     </div>
     <div id="item-table-wrap">
       <table class="item-table">
@@ -1533,6 +1537,74 @@ function setEmail(email){
 function addEmptyRow(){
   items.push({name:'',spec:'',unit:'EA',qty:1,price:0,note:''});
   renderItems();sched();
+}
+
+// ════════════════════════════════════
+// 엑셀 업로드로 품목 일괄 추가
+// ════════════════════════════════════
+function downloadExcelTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['품목명','규격/모델','단위','수량','단가','비고'],
+    ['예: 탭핑&드릴링머신','SMC TD-410','대',1,400000,'회전테이블 부착'],
+  ]);
+  ws['!cols']=[{wch:22},{wch:22},{wch:8},{wch:8},{wch:12},{wch:22}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'품목');
+  XLSX.writeFile(wb,'화천ETC_견적서_품목양식.xlsx');
+}
+
+function handleExcelUpload(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){alert('엑셀에 데이터가 없습니다.');return;}
+
+      // 헤더 유연하게 매칭 (공백/슬래시 무시)
+      const norm=s=>String(s||'').replace(/[\s\/]/g,'');
+      const findKey=(row,aliases)=>{
+        const keys=Object.keys(row);
+        for(const k of keys){ if(aliases.some(a=>norm(k)===norm(a))) return k; }
+        return null;
+      };
+
+      let added=0, skipped=0;
+      rows.forEach(row=>{
+        const kName=findKey(row,['품목명','품목','상품명']);
+        const kSpec=findKey(row,['규격/모델','규격모델','규격','모델']);
+        const kUnit=findKey(row,['단위']);
+        const kQty=findKey(row,['수량']);
+        const kPrice=findKey(row,['단가']);
+        const kNote=findKey(row,['비고','메모']);
+
+        const name=kName?String(row[kName]).trim():'';
+        if(!name){ skipped++; return; }
+
+        items.push({
+          name,
+          spec:kSpec?String(row[kSpec]||'').trim():'',
+          unit:kUnit&&row[kUnit]?String(row[kUnit]).trim():'EA',
+          qty:kQty?(parseFloat(String(row[kQty]).replace(/,/g,''))||1):1,
+          price:kPrice?(parseFloat(String(row[kPrice]).replace(/,/g,''))||0):0,
+          note:kNote?String(row[kNote]||'').trim():'',
+        });
+        added++;
+      });
+
+      renderItems();calcTotals();sched();
+      event.target.value=''; // 같은 파일 다시 선택 가능하도록 초기화
+      alert(`✅ 품목 ${added}건 추가 완료!`+(skipped?`\n(이름 없는 행 ${skipped}건은 건너뜀)`:''));
+    }catch(err){
+      alert('❌ 엑셀 파일을 읽는 중 오류가 발생했습니다.\n'+err.message);
+      event.target.value='';
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 function addItemFromDB(it){
   items.push({name:it.name,spec:it.spec,unit:it.unit,qty:1,price:it.price,note:''});
