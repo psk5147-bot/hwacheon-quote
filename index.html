@@ -934,6 +934,7 @@ const COM={
 
 let items=[],docId=null;
 let sItems=[],sDocId=null; // 거래명세서 전용
+let isDirty=false; // 불러온 뒤 실제로 수정한 내용이 있는지 추적 (없으면 저장 안 함)
 let currentDocType='quote'; // 'quote' | 'statement'
 let _docsCache={}, _custsCache=[];
 
@@ -1107,6 +1108,7 @@ function newStatementDoc(){
   genSDocNo();
   document.getElementById('s-date').value=new Date().toISOString().slice(0,10);
   renderSItems();calcSTotals();
+  isDirty=false;
 }
 function addEmptyRowS(){sItems.push({name:'',spec:'',unit:'EA',qty:1,price:0,note:''});renderSItems();sched();}
 function clearItemsS(){if(confirm('모든 품목을 삭제하시겠습니까?')){sItems=[];renderSItems();calcSTotals();}}
@@ -1213,15 +1215,18 @@ function applyAnyDoc(key){
   const d=docs[key];
   if(!d){closeModal('modal-load-any-doc');return;}
   if(_loadDocTarget==='quote'){
+    // 같은 견적서를 불러와서 보는 것이므로 문서번호를 유지한다.
+    // (예전엔 여기서 genDocNo()로 새 번호를 발급해서, 수정 없이 저장만 눌러도
+    //  문서함에 똑같은 내용의 새 파일이 하나 더 생기는 원인이 됐음)
     setFormData(d);
-    // 새 문서번호 발급 (원본 덮어쓰기 방지)
-    genDocNo();
     setDocType('quote');
+    isDirty=false;
   } else {
+    // 견적서 내용을 가져와 '새' 거래명세서를 작성하는 것이므로 새 문서번호가 맞다.
     setSFormData(d);
-    // 새 문서번호 발급
     genSDocNo();
     setDocType('statement');
+    isDirty=true;
   }
   closeModal('modal-load-any-doc');
 }
@@ -1265,6 +1270,7 @@ function applyQuoteDoc(key){
   genSDocNo();
   document.getElementById('s-date').value=new Date().toISOString().slice(0,10);
   renderSItems();calcSTotals();
+  isDirty=true;
   closeModal('modal-load-quote-doc');
   alert('불러오기 완료!\n거래처: '+(d.company||'(없음)')+'\n품목: '+sItems.length+'건');
 }
@@ -1315,6 +1321,7 @@ async function saveStatementSilent(){
   if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company&&(c.person||'')===(d.person||'')))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
 }
 async function saveStatementDoc(){
+  if(!isDirty){alert('수정된 내용이 없습니다.\n(변경 사항이 있을 때만 저장됩니다)');return;}
   const d=getSFormData();
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
@@ -1325,6 +1332,7 @@ async function saveStatementDoc(){
     const {doc,setDoc,collection}=window._fbFns;
     await setDoc(doc(collection(window._db,'quotes'),d.docNo),data);
     setBadge('저장됨 ✓');
+    isDirty=false;
   }catch(e){setBadge('⚠️ 오프라인 저장');console.log('Firestore 저장 실패',e);}
   if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company&&(c.person||'')===(d.person||'')))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
   alert('저장되었습니다:\n'+fileName);
@@ -1828,7 +1836,7 @@ function setFormData(d){
 // 저장 / 자동저장
 // ════════════════════════════════════
 
-function sched(){}
+function sched(){isDirty=true;}
 function setBadge(m){}
 function newDoc(){
   items=[];docId=null;
@@ -1842,6 +1850,7 @@ function newDoc(){
   genDocNo();
   document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
   renderItems();calcTotals();
+  isDirty=false;
 }
 function getDocs2(){return _docsCache;}
 
@@ -1904,6 +1913,8 @@ function loadDoc(key){
       setDocType('quote');
       showTab('quote',document.querySelectorAll('#appbar .tabs button')[0]);
     }
+    // 문서함에서 불러오기만 한 상태 = 아직 수정된 내용 없음 → 저장 버튼을 눌러도 새로 저장되지 않음
+    isDirty=false;
   }
 }
 async function delDoc(key){
@@ -1971,6 +1982,7 @@ function applyCust(id){
     document.getElementById('c-addr').value=c.addr||'';
   }
   _custTarget='quote';
+  isDirty=true;
   closeModal('modal-load-cust');
 }
 function renderCustomers(){
@@ -2335,6 +2347,7 @@ function doLogout(){
 // Firebase Firestore 동기화
 // ════════════════════════════════════
 async function saveDoc(){
+  if(!isDirty){alert('수정된 내용이 없습니다.\n(변경 사항이 있을 때만 저장됩니다)');return;}
   const d=getFormData();
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
@@ -2347,6 +2360,7 @@ async function saveDoc(){
     const db=window._db;
     await setDoc(doc(collection(db,'quotes'),d.docNo),data);
     setBadge('저장됨 ✓');
+    isDirty=false;
   }catch(e){
     setBadge('⚠️ 오프라인 저장');
     console.log('Firestore 저장 실패',e);
