@@ -58,6 +58,13 @@ function trackingPixelTag(trackId){
   if(!window.TRACK_BASE || window.TRACK_BASE.includes('YOUR-SUBDOMAIN')) return ''; // 미배포 시 픽셀 생략
   return `<img src="${window.TRACK_BASE}/p/${trackId}.gif" width="1" height="1" style="display:none;border:0" alt="">`;
 }
+// 다운로드 링크를 Worker 경유 리다이렉트로 감싸서, 링크 클릭도 '열람'으로 기록되게 함
+// (네이버메일 등 일부 메일 클라이언트가 추적 픽셀 이미지를 프록시/캐시해서 안 잡히는 경우의 보조 신호)
+function trackedLink(trackId, url){
+  if(!url) return url;
+  if(!window.TRACK_BASE || window.TRACK_BASE.includes('YOUR-SUBDOMAIN')) return url; // 미배포 시 원본 링크 그대로
+  return `${window.TRACK_BASE}/l/${encodeURIComponent(trackId)}?u=${encodeURIComponent(url)}`;
+}
 // 여러 trackId의 열람 상태를 한 번에 조회해서 캐시에 채워줌
 // (이미 '읽음'으로 확인된 건 다시 안 물어보고, '미확인'인 건 계속 재확인함)
 // 반환값: 이번 조회로 '미확인 → 읽음'으로 새로 바뀐 게 있으면 true (그때만 화면을 다시 그리면 됨 — 무한 재렌더링 방지)
@@ -1502,7 +1509,7 @@ async function sendStatementEmail(){
     const json=await res.json();if(json.secure_url)pdfUrl=json.secure_url;
   }catch(e){console.log('PDF 생성 실패',e);}
   const trackId=genTrackId(d.docNo);
-  const params={to_email:d.email,to_name:d.person||d.company,company:d.company,doc_no:d.docNo,doc_date:d.date,total:comma(total),manager:isGwajang?'문상록 과장':'문형록 대표',manager_mobile:mobile,pdf_url:pdfUrl||'(링크 생성 실패)',doc_type:'거래명세서',tracking_pixel:trackingPixelTag(trackId)};
+  const params={to_email:d.email,to_name:d.person||d.company,company:d.company,doc_no:d.docNo,doc_date:d.date,total:comma(total),manager:isGwajang?'문상록 과장':'문형록 대표',manager_mobile:mobile,pdf_url:pdfUrl?trackedLink(trackId,pdfUrl):'(링크 생성 실패)',doc_type:'거래명세서',tracking_pixel:trackingPixelTag(trackId)};
   emailjs.send('service_1kdhkid','template_fdtn3vj',params)
     .then(()=>{
       alert('✅ 이메일 발송 완료!\n'+d.email);
@@ -2614,7 +2621,7 @@ async function sendEmail(){
     total:comma(total),
     manager:isGwajang?'문상록 과장':'문형록 대표',
     manager_mobile:mobile,
-    pdf_url:pdfUrl||'(링크 생성 실패 - 별도 전달 드립니다)',
+    pdf_url:pdfUrl?trackedLink(trackId,pdfUrl):'(링크 생성 실패 - 별도 전달 드립니다)',
     doc_type:'견적서',
     tracking_pixel:trackingPixelTag(trackId),
   };
