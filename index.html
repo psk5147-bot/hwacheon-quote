@@ -59,15 +59,23 @@ function trackingPixelTag(trackId){
   return `<img src="${window.TRACK_BASE}/p/${trackId}.gif" width="1" height="1" style="display:none;border:0" alt="">`;
 }
 // 여러 trackId의 열람 상태를 한 번에 조회해서 캐시에 채워줌
+// (이미 '읽음'으로 확인된 건 다시 안 물어보고, '미확인'인 건 계속 재확인함)
+// 반환값: 이번 조회로 '미확인 → 읽음'으로 새로 바뀐 게 있으면 true (그때만 화면을 다시 그리면 됨 — 무한 재렌더링 방지)
 async function fetchReadStatuses(trackIds){
-  const need=[...new Set(trackIds.filter(id=>id && !(id in window._readStatus)))];
+  const need=[...new Set(trackIds.filter(id=>id && !(window._readStatus[id]&&window._readStatus[id].opened)))];
   if(!need.length || !window.TRACK_BASE || window.TRACK_BASE.includes('YOUR-SUBDOMAIN')) return false;
   try{
     const res=await fetch(`${window.TRACK_BASE}/status?ids=${encodeURIComponent(need.join(','))}`);
     if(!res.ok) return false;
     const json=await res.json();
+    let newlyOpened=false;
+    for(const id of need){
+      const wasOpened=!!(window._readStatus[id]&&window._readStatus[id].opened);
+      const nowOpened=!!(json[id]&&json[id].opened);
+      if(!wasOpened&&nowOpened) newlyOpened=true;
+    }
     Object.assign(window._readStatus, json);
-    return true;
+    return newlyOpened;
   }catch(e){ console.log('열람 상태 조회 실패', e); return false; }
 }
 function readBadgeHtml(trackId){
