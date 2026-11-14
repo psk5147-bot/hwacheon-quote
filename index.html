@@ -136,7 +136,7 @@ function readBadgeHtml(trackId){
   }catch(e){ console.log('거래처 리스너 실패', e); }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>화천이티씨 견적서</title>
+<title>견적서 관리</title>
 <style>
 :root{
   --primary:#1a3a5c;--primary-light:#2d5f8a;--accent:#c8922a;--accent-light:#e8b84b;
@@ -495,7 +495,7 @@ table.item-table tbody tr:hover{background:#fafaf7}
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="화천이티씨 견적서">
+<meta name="apple-mobile-web-app-title" content="견적서 관리">
 <meta name="theme-color" content="#1a3a5c">
 <link rel="apple-touch-icon" id="apple-icon" href="">
 <script>
@@ -507,9 +507,9 @@ document.getElementById('apple-icon').href = ICON_B64;
 
 // Manifest 동적 생성
 const manifest = {
-  name: "화천이티씨 견적서",
-  short_name: "견적서",
-  description: "화천이티씨 견적서 시스템",
+  name: "견적서 관리",
+  short_name: "견적서 관리",
+  description: "견적서 관리 시스템",
   start_url: "./",
   display: "standalone",
   background_color: "#1a3a5c",
@@ -540,7 +540,7 @@ if('serviceWorker' in navigator){
 <div id="main-app" style="display:block">
 <div id="appbar">
   <div class="appbar-top">
-    <div class="logo">화천<span>ETC</span> 견적서</div>
+    <div class="logo">견적서 관리</div>
     <div class="appbar-right">
       <button id="install-btn" onclick="installApp()" class="ab-btn ab-install" style="display:none">📲</button>
     </div>
