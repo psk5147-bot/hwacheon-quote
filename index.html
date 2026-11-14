@@ -488,6 +488,7 @@ table.item-table tbody tr:hover{background:#fafaf7}
   /* 버튼 */
   .btn-sm{padding:10px 14px;font-size:13px}
 }
+@media(max-width:600px){.item-search-bar{flex-wrap:wrap}.item-search-bar>div:first-child{flex:1 1 100%!important}}
 </style>
 <link rel="manifest" href="#" id="manifest-link">
 <meta name="mobile-web-app-capable" content="yes">
@@ -873,6 +874,7 @@ if('serviceWorker' in navigator){
     <button id="docs-tab-all"   onclick="setDocsFilter('all')"       style="flex:1;padding:8px;border:none;background:var(--primary);color:#fff;font-family:var(--font);font-size:12px;cursor:pointer">전체</button>
     <button id="docs-tab-quote" onclick="setDocsFilter('quote')"     style="flex:1;padding:8px;border:none;background:#f7f6f2;color:var(--text);font-family:var(--font);font-size:12px;cursor:pointer;border-left:1px solid var(--border)">견적서</button>
     <button id="docs-tab-statement" onclick="setDocsFilter('statement')" style="flex:1;padding:8px;border:none;background:#f7f6f2;color:var(--text);font-family:var(--font);font-size:12px;cursor:pointer;border-left:1px solid var(--border)">거래명세서</button>
+    <button id="docs-tab-unread" onclick="setDocsFilter('unread')" style="flex:1;padding:8px;border:none;background:#f7f6f2;color:var(--text);font-family:var(--font);font-size:12px;cursor:pointer;border-left:1px solid var(--border)">미확인</button>
   </div>
   <div class="doc-list" id="doc-list"></div>
 </div>
@@ -1518,23 +1520,32 @@ async function sendStatementEmail(){
     })
     .catch(e=>{alert('❌ 발송 실패: '+(e.text||e.message||e));});
 }
+// 문자 발송: 서버 주소(SMS_ENDPOINT)가 설정되면 로그인 토큰으로 서버가 발송, 없으면 문자 앱을 열어 내용을 채워준다 (API 키는 앱에 두지 않음)
+window.SMS_ENDPOINT='';
+async function smsSend(tel,text){
+  const to=String(tel||'').replace(/[^0-9]/g,'');
+  if(!to){alert('연락처가 올바르지 않습니다.');return false;}
+  if(window.SMS_ENDPOINT){
+    try{
+      const tok=await window._auth.currentUser.getIdToken();
+      const r=await fetch(window.SMS_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({to,text})});
+      const j=await r.json().catch(()=>({}));
+      if(r.ok){alert('✅ 문자 발송 완료!\n'+tel);return true;}
+      alert('❌ 문자 발송 실패: '+(j.error||r.status));return false;
+    }catch(e){alert('❌ 문자 오류: '+e.message);return false;}
+  }
+  try{await navigator.clipboard.writeText(text);}catch(e){}
+  window.location.href='sms:'+to+'?&body='+encodeURIComponent(text);
+  return true;
+}
 async function sendSMSData(d){
   const isGwajang=(d.manager||'').includes('문상록 과장')||(d.manager||'').includes('과장');
   const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
   const from='01054246147';
   const typeLabel=d.docType==='statement'?'거래명세서':'견적서';
   const msg=`[화천이티씨]\n${typeLabel}를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
-  const API_KEY='NCSFE0G6RDWZYKWE';const API_SECRET='VFP7K7WMPKQYPWZ8ZTJW8CYCUIPQTAA4';
-  const date=new Date().toISOString();const salt=Math.random().toString(36).substring(2,12);
-  const enc=new TextEncoder();
-  const keyData=await crypto.subtle.importKey('raw',enc.encode(API_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const sig=await crypto.subtle.sign('HMAC',keyData,enc.encode(date+salt));
-  const signature=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  try{
-    const res=await fetch('https://api.coolsms.co.kr/messages/v4/send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`HMAC-SHA256 apiKey=${API_KEY}, date=${date}, salt=${salt}, signature=${signature}`},body:JSON.stringify({message:{to:d.tel.replace(/-/g,''),from,text:msg}})});
-    const json=await res.json();
-    if(res.ok){alert('✅ 문자 발송 완료!\n'+d.tel);if(d.docType==='statement')saveStatementSilent();else saveDocSilent();}else alert('❌ 문자 발송 실패: '+(json.errorMessage||JSON.stringify(json)));
-  }catch(e){alert('❌ 문자 오류: '+e.message);}
+  const ok=await smsSend(d.tel,msg);
+  if(ok){if(d.docType==='statement')saveStatementSilent();else saveDocSilent();}
 }
 // ════════════════════════════════════
 function onManagerChange(v){
@@ -1913,7 +1924,7 @@ function getDocs2(){return _docsCache;}
 let _docsFilter='all';
 function setDocsFilter(f){
   _docsFilter=f;
-  ['all','quote','statement'].forEach(t=>{
+  ['all','quote','statement','unread'].forEach(t=>{
     const btn=document.getElementById('docs-tab-'+t);
     if(!btn)return;
     const active=t===f;
@@ -1923,41 +1934,72 @@ function setDocsFilter(f){
   });
   renderDocs();
 }
+let _docsLimit=30,_docsSig='';
+function _isUnread(v){const st=v.trackId&&window._readStatus[v.trackId];return !!(st&&!st.opened);}
 function renderDocs(){
   const q=(document.getElementById('doc-search').value||'').toLowerCase();
+  const sig=q+'|'+_docsFilter; if(sig!==_docsSig){_docsSig=sig;_docsLimit=30;}
   const docs=getDocs2();
   const list=document.getElementById('doc-list');
   const entries=Object.entries(docs)
     .filter(([k,v])=>{
       if(_docsFilter==='quote'&&v.docType==='statement')return false;
       if(_docsFilter==='statement'&&v.docType!=='statement')return false;
+      if(_docsFilter==='unread'&&!_isUnread(v))return false;
       return !q||( (v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q)||(v.fileName||'').toLowerCase().includes(q));
     })
     .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
-  if(!entries.length){list.innerHTML='<div class="empty-msg">저장된 문서가 없습니다.</div>';return;}
-  list.innerHTML=entries.map(([k,v])=>{
+  if(!entries.length){list.innerHTML='<div class="empty-msg">'+(_docsFilter==='unread'?'미확인 문서가 없습니다.':'저장된 문서가 없습니다.')+'</div>';return;}
+  const grp={};Object.values(docs).forEach(v=>{const g=(v.company||'')+'|'+(v.date||'');if(v.company)grp[g]=(grp[g]||0)+1;});
+  const pill=(bg,fg,t)=>`<span style="display:inline-block;background:${bg};color:${fg};font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">${t}</span>`;
+  const shown=entries.slice(0,_docsLimit);
+  list.innerHTML=shown.map(([k,v])=>{
     const isStmt=v.docType==='statement';
     const badge=isStmt
       ?`<span style="display:inline-block;background:#1a5c2e;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">거래명세서</span>`
       :`<span style="display:inline-block;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">견적서</span>`;
     const readBadge=v.trackId?readBadgeHtml(v.trackId):'';
+    let waitBadge='';
+    if(_isUnread(v)&&v.savedAt){const days=Math.floor((Date.now()-new Date(v.savedAt).getTime())/86400000);if(days>=3)waitBadge=pill('#fde8e6','#c0281c','⏰ '+days+'일째 미확인');}
+    const g=grp[(v.company||'')+'|'+(v.date||'')];
+    const grpBadge=(v.company&&g>1)?pill('#eef1f5','#5b6675','같은 날 '+g+'건'):'';
     return `
     <div class="doc-card">
       <div class="doc-info">
-        <div class="doc-title-text">${badge}${readBadge}${v.fileName || (v.docNo + ' — ' + (v.company||'거래처'))}</div>
+        <div class="doc-title-text">${badge}${readBadge}${waitBadge}${grpBadge}${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
         <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
         <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
+        <button class="btn-sm" onclick="cloneDoc('${k}')">복제</button>
+        ${isStmt?'':`<button class="btn-sm" onclick="quoteToStatement('${k}')">명세서로</button>`}
         <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
       </div>
     </div>`;
-  }).join('');
-  // 이메일 발송 이력이 있는 문서들의 열람 여부를 백그라운드에서 조회 후 배지만 갱신
+  }).join('')+(entries.length>_docsLimit?`<button class="btn-sm" style="width:100%;margin-top:10px;padding:12px" onclick="_docsLimit+=30;renderDocs()">더 보기 (${entries.length-_docsLimit}건 남음)</button>`:'');
   const trackIds=entries.map(([k,v])=>v.trackId).filter(Boolean);
   if(trackIds.length){
     fetchReadStatuses(trackIds).then(changed=>{ if(changed) renderDocs(); });
   }
+}
+function cloneDoc(key){
+  const d=getDocs2()[key]; if(!d){alert('문서를 찾을 수 없습니다.');return;}
+  if(d.docType==='statement'){
+    setSFormData(d);setDocType('statement');
+    genSDocNo();document.getElementById('s-date').value=new Date().toISOString().slice(0,10);
+    showTab('statement',document.querySelectorAll('#appbar .tabs button')[1]);
+  } else {
+    setFormData(d);setDocType('quote');
+    docId=null;genDocNo();document.getElementById('q-date').value=new Date().toISOString().slice(0,10);
+    showTab('quote',document.querySelectorAll('#appbar .tabs button')[0]);
+  }
+  isDirty=true;
+  alert('복제했습니다.\n새 문서번호로 작성 중이며, 저장 버튼을 눌러야 저장됩니다.');
+}
+function quoteToStatement(key){
+  applyQuoteDoc(key);
+  setDocType('statement');
+  showTab('statement',document.querySelectorAll('#appbar .tabs button')[1]);
 }
 function loadDoc(key){
   const docs=getDocs2();
@@ -2044,10 +2086,13 @@ function applyCust(id){
   isDirty=true;
   closeModal('modal-load-cust');
 }
+let _custLimit=30,_custSig='';
 function renderCustomers(){
   const q=(document.getElementById('cust-search-main')?.value||'').toLowerCase();
   let custs=getCusts();
-  if(q) custs=custs.filter(c=>(c.company||'').toLowerCase().includes(q)||(c.person||'').toLowerCase().includes(q));
+  if(q!==_custSig){_custSig=q;_custLimit=30;}
+  if(q) custs=custs.filter(c=>(c.company||'').toLowerCase().includes(q)||(c.person||'').toLowerCase().includes(q)||(c.tel||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.email||'').toLowerCase().includes(q));
+  custs.sort((a,b)=>(a.company||'').localeCompare(b.company||'','ko'));
   const list=document.getElementById('customer-list');
   if(!custs.length){list.innerHTML='<div class="empty-msg">저장된 거래처가 없습니다.</div>';return;}
 
@@ -2060,7 +2105,8 @@ function renderCustomers(){
     else seen[key]=true;
   });
 
-  list.innerHTML=custs.map(c=>{
+  const _total=custs.length;
+  list.innerHTML=custs.slice(0,_custLimit).map(c=>{
     const key=(c.company||'').trim()+'||'+(c.person||'').trim();
     const isDup=dupKeys.has(key);
     return `<div class="cust-card" style="${isDup?'border-color:#ffc107;background:#fffdf0':''}">
@@ -2072,7 +2118,7 @@ function renderCustomers(){
         <button class="btn-sm btn-danger" onclick="delCust(${c.id})">삭제</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('')+(_total>_custLimit?`<button class="btn-sm" style="width:100%;margin-top:10px;padding:12px" onclick="_custLimit+=30;renderCustomers()">더 보기 (${_total-_custLimit}곳 남음)</button>`:'');
 }
 
 function findDupCusts(){
@@ -2635,26 +2681,7 @@ async function sendEmail(){
         const from='01054246147';
         const msg=`[화천이티씨]\n견적서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
         if(confirm(`📱 문자도 발송하시겠습니까?\n\n수신: ${d.tel}\n\n${msg}`)){
-          (async()=>{
-            const API_KEY='NCSFE0G6RDWZYKWE';
-            const API_SECRET='VFP7K7WMPKQYPWZ8ZTJW8CYCUIPQTAA4';
-            const date=new Date().toISOString();
-            const salt=Math.random().toString(36).substring(2,12);
-            const enc=new TextEncoder();
-            const keyData=await crypto.subtle.importKey('raw',enc.encode(API_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-            const sig=await crypto.subtle.sign('HMAC',keyData,enc.encode(date+salt));
-            const signature=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
-            try{
-              const res=await fetch('https://api.coolsms.co.kr/messages/v4/send',{
-                method:'POST',
-                headers:{'Content-Type':'application/json','Authorization':`HMAC-SHA256 apiKey=${API_KEY}, date=${date}, salt=${salt}, signature=${signature}`},
-                body:JSON.stringify({message:{to:d.tel.replace(/-/g,''),from,text:msg}}),
-              });
-              const json=await res.json();
-              if(res.ok) alert('✅ 문자 발송 완료!\n'+d.tel);
-              else alert('❌ 문자 발송 실패: '+(json.errorMessage||JSON.stringify(json)));
-            }catch(e){ alert('❌ 문자 오류: '+e.message); }
-          })();
+          smsSend(d.tel,msg);
         }
       }
     })
@@ -2670,48 +2697,11 @@ async function sendSMS(){
   const d=getFormData();
   if(!d.tel){alert('수신처 연락처를 입력해주세요.');return;}
   if(!d.company){alert('거래처명을 입력해주세요.');return;}
-
   const isGwajang=d.manager.includes('문상록 과장')||d.manager.includes('과장');
   const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
-  const from='01054246147'; // 발신번호 고정 (대표번호)
   const msg=`[화천이티씨]\n견적서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
-
   if(!confirm(`${d.tel} 으로 문자를 발송하시겠습니까?\n\n${msg}`))return;
-
-  const API_KEY='NCSFE0G6RDWZYKWE';
-  const API_SECRET='VFP7K7WMPKQYPWZ8ZTJW8CYCUIPQTAA4';
-  const date=new Date().toISOString();
-  const salt=Math.random().toString(36).substring(2,12);
-
-  const enc=new TextEncoder();
-  const keyData=await crypto.subtle.importKey('raw',enc.encode(API_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const sig=await crypto.subtle.sign('HMAC',keyData,enc.encode(date+salt));
-  const signature=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
-
-  try{
-    const res=await fetch('https://api.coolsms.co.kr/messages/v4/send',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`HMAC-SHA256 apiKey=${API_KEY}, date=${date}, salt=${salt}, signature=${signature}`,
-      },
-      body:JSON.stringify({
-        message:{
-          to:d.tel.replace(/-/g,''),
-          from,
-          text:msg,
-        }
-      }),
-    });
-    const json=await res.json();
-    if(res.ok){
-      alert('✅ 문자 발송 완료!\n'+d.tel);
-    }else{
-      alert('❌ 문자 발송 실패: '+(json.errorMessage||JSON.stringify(json)));
-    }
-  }catch(e){
-    alert('❌ 문자 발송 오류: '+e.message);
-  }
+  await smsSend(d.tel,msg);
 }
 
 // ════════════════════════════════════
