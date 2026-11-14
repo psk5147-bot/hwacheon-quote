@@ -2022,7 +2022,6 @@ function renderDocs(){
     if(_isUnread(v)&&v.savedAt){const days=Math.floor((Date.now()-new Date(v.savedAt).getTime())/86400000);if(days>=3)waitBadge=pill('#fde8e6','#c0281c','⏰ '+days+'일째 미확인');}
     const g=grp[(v.company||'')+'|'+(v.date||'')];
     const grpBadge=(v.company&&g>1)?pill('#eef1f5','#5b6675','같은 날 '+g+'건'):'';
-    const stPill=v.status==='won'?pill('#1a7c3e','#fff','✅ 수주'):(v.status==='lost'?pill('#999','#fff','✖ 취소'):'');
     const sentPill=v.emailSentAt?pill('#e8f1fb','#1a4f8b','📧 발송 '+fmtDt(v.emailSentAt)):'';
     const smsPill=v.smsSentAt?pill('#eaf6ee','#1a7c3e','💬 문자'):'';
     let expPill='';
@@ -2035,13 +2034,13 @@ function renderDocs(){
     return `
     <div class="doc-card">
       <div class="doc-info">
-        <div class="doc-title-text">${badge}${stPill}${expPill}${sentPill}${smsPill}${readBadge}${waitBadge}${grpBadge}${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
+        <div class="doc-title-text">${badge}${expPill}${sentPill}${smsPill}${readBadge}${waitBadge}${grpBadge}${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
         <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
         <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
         <button class="btn-sm" onclick="cloneDoc('${k}')">복제</button>
-        ${isStmt?'':`<button class="btn-sm" onclick="quoteToStatement('${k}')">명세서로</button><button class="btn-sm" onclick="setDocStatus('${k}','won')">${v.status==='won'?'수주 해제':'수주'}</button><button class="btn-sm" onclick="copyLedger('${k}')">수금대장 복사</button>`}
+        ${isStmt?'':`<button class="btn-sm" onclick="quoteToStatement('${k}')">명세서로</button>`}
         <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
       </div>
     </div>`;
@@ -2065,25 +2064,6 @@ function cloneDoc(key){
   }
   isDirty=true;
   alert('복제했습니다.\n새 문서번호로 작성 중이며, 저장 버튼을 눌러야 저장됩니다.');
-}
-async function setDocStatus(key,status){
-  const d=getDocs2()[key]; if(!d)return;
-  const next=(d.status===status)?'':status;
-  try{
-    const {doc,setDoc,collection}=window._fbFns;
-    await setDoc(doc(collection(window._db,'quotes'),d.docNo),{status:next},{merge:true});
-    d.status=next; renderDocs();
-  }catch(e){alert('상태 저장에 실패했습니다. 인터넷 연결을 확인해 주세요.');}
-}
-function copyLedger(key){
-  const d=getDocs2()[key]; if(!d)return;
-  const t=calcDocTotal(d);
-  const first=(d.items&&d.items[0])?d.items[0].name:'';
-  const n=(d.items||[]).length;
-  const dt=(d.date||'').split('-'); const md=dt.length===3?(+dt[1])+'/'+(+dt[2]):'';
-  const text=`${d.company||'거래처'} ${first}${n>1?' 외 '+(n-1)+'건':''} ${t.total.toLocaleString('ko-KR')}원(VAT${d.optVat?'포함':'별도'}) ${md}`.trim();
-  const done=()=>alert('복사했습니다. 수금대장에 붙여 넣어 등록하세요.\n\n'+text);
-  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done,()=>alert('복사 권한이 없어 직접 복사해 주세요.\n\n'+text)); else alert('직접 복사해 주세요.\n\n'+text);
 }
 function viewCustDocs(id){
   const c=getCusts().find(x=>x.id===id); if(!c)return;
