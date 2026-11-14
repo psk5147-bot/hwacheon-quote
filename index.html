@@ -12,7 +12,7 @@ window._checkDraft = function(){};
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
   const firebaseConfig = {
@@ -35,7 +35,7 @@ window._checkDraft = function(){};
   window._auth = auth;
   window._db = db;
   window._storage = getStorage(app);
-  window._fbFns = { signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, ref, uploadBytes, getDownloadURL };
+  window._fbFns = { signInWithEmailAndPassword, signOut, onAuthStateChanged, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, ref, uploadBytes, getDownloadURL };
 </script>
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -489,6 +489,7 @@ table.item-table tbody tr:hover{background:#fafaf7}
   .btn-sm{padding:10px 14px;font-size:13px}
 }
 @media(max-width:600px){.item-search-bar{flex-wrap:wrap}.item-search-bar>div:first-child{flex:1 1 100%!important}}
+.doc-actions{flex-wrap:wrap;justify-content:flex-end}
 </style>
 <link rel="manifest" href="#" id="manifest-link">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1151,6 +1152,7 @@ function genSDocNo(){
   return no;
 }
 function newStatementDoc(){
+  window._loadedDocNo=null;
   sItems=[];sDocId=null;
   ['sc-company','sc-person','sc-tel','s-manager-custom','s-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   setSEmail('');
@@ -1344,18 +1346,56 @@ function addSItemFromDB(it){
 let _custTarget='quote';
 function openLoadCustForStatement(){_custTarget='statement';renderCustSearch();openModal('modal-load-cust');}
 // 거래명세서 저장
+window._loadedDocNo=null; window._sentMeta=null;
+const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function calcDocTotal(d){
+  const supply=(d.items||[]).reduce((s,it)=>s+(+it.qty||0)*(+it.price||0),0);
+  let discAmt=0;
+  if(d.optDisc){const dv=parseFloat(d.discVal)||0;discAmt=d.discType==='pct'?supply*dv/100:dv;}
+  const after=supply-discAmt;
+  const vat=d.optVat?Math.round(after*.1):0;
+  let total=after+vat; if(d.optTrunc)total=Math.floor(total/10)*10;
+  return {supply,vat,total};
+}
+async function docExists(no){
+  try{const {doc,getDoc,collection}=window._fbFns;const s=await getDoc(doc(collection(window._db,'quotes'),no));return s.exists();}
+  catch(e){return false;}
+}
+// 새 문서번호가 이미 저장된 다른 문서와 겹치면 새 번호로 바꾼다 (불러온 문서를 수정하는 경우는 그대로 덮어쓰기)
+async function ensureUniqueNo(kind){
+  const el=document.getElementById(kind==='statement'?'s-no':'q-no');
+  let no=el.value; let changed=false;
+  if(window._loadedDocNo===no) return {changed:false,no};
+  for(let i=0;i<30&&await docExists(no);i++){
+    if(kind==='statement'){no=genSDocNo();}else{docId=null;genDocNo();no=el.value;}
+    changed=true;
+  }
+  return {changed,no};
+}
+// 덮어써도 사라지면 안 되는 발송·읽음·상태 정보는 기존 문서에서 이어받는다
+async function mergePrev(data){
+  try{
+    const {doc,getDoc,collection}=window._fbFns;
+    const s=await getDoc(doc(collection(window._db,'quotes'),data.docNo));
+    if(s.exists()){const p=s.data();['trackId','emailSentAt','emailTo','smsSentAt','status'].forEach(k=>{if(data[k]===undefined&&p[k]!==undefined)data[k]=p[k];});}
+  }catch(e){}
+  return data;
+}
+function saveDraftLocal(data){try{localStorage.setItem('htc_unsaved_'+data.docNo,JSON.stringify(data));}catch(e){}}
 async function saveDocSilent(trackId){
   const d=getFormData();
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
   const fileName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
-  const data={...d,savedAt:new Date().toISOString(),fileName};
+  const data={...d,savedAt:new Date().toISOString(),fileName,...(window._sentMeta||{})};
+  window._sentMeta=null;
   if(trackId) data.trackId=trackId;
+  await mergePrev(data);
   setBadge('저장 중...');
   try{
     const {doc,setDoc,collection}=window._fbFns;
     await setDoc(doc(collection(window._db,'quotes'),d.docNo),data);
-    setBadge('저장됨 ✓');
+    setBadge('저장됨 ✓');window._loadedDocNo=d.docNo;
   }catch(e){setBadge('⚠️ 오프라인 저장');console.log('자동저장 실패',e);}
   if(d.company) autoRegisterCust(d.company,d.person,d.tel,getEmail());
 }
@@ -1364,32 +1404,42 @@ async function saveStatementSilent(trackId){
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
   const fileName=firstItem?`${company}_${firstItem}_거래명세서`:`${company}_거래명세서`;
-  const data={...d,savedAt:new Date().toISOString(),fileName,docType:'statement'};
+  const data={...d,savedAt:new Date().toISOString(),fileName,docType:'statement',...(window._sentMeta||{})};
+  window._sentMeta=null;
   if(trackId) data.trackId=trackId;
+  await mergePrev(data);
   setBadge('저장 중...');
   try{
     const {doc,setDoc,collection}=window._fbFns;
     await setDoc(doc(collection(window._db,'quotes'),d.docNo),data);
-    setBadge('저장됨 ✓');
+    setBadge('저장됨 ✓');window._loadedDocNo=d.docNo;
   }catch(e){setBadge('⚠️ 오프라인 저장');console.log('자동저장 실패',e);}
   if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company&&(c.person||'')===(d.person||'')))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
 }
 async function saveStatementDoc(){
   if(!isDirty){alert('수정된 내용이 없습니다.\n(변경 사항이 있을 때만 저장됩니다)');return;}
+  const u=await ensureUniqueNo('statement');
   const d=getSFormData();
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
   const fileName=firstItem?`${company}_${firstItem}_거래명세서`:`${company}_거래명세서`;
   const data={...d,savedAt:new Date().toISOString(),fileName,docType:'statement'};
+  await mergePrev(data);
   setBadge('저장 중...');
+  let ok=false;
   try{
     const {doc,setDoc,collection}=window._fbFns;
     await setDoc(doc(collection(window._db,'quotes'),d.docNo),data);
-    setBadge('저장됨 ✓');
-    isDirty=false;
-  }catch(e){setBadge('⚠️ 오프라인 저장');console.log('Firestore 저장 실패',e);}
-  if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company&&(c.person||'')===(d.person||'')))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
-  alert('저장되었습니다:\n'+fileName);
+    ok=true;
+  }catch(e){console.log('Firestore 저장 실패',e);}
+  if(ok){
+    setBadge('저장됨 ✓');isDirty=false;window._loadedDocNo=d.docNo;
+    if(d.company){const custs=getCusts();if(!custs.find(c=>c.company===d.company&&(c.person||'')===(d.person||'')))saveCustToFirestore({id:Date.now(),company:d.company,person:d.person||'',tel:d.tel||'',email:d.email||'',addr:''});}
+    alert('저장되었습니다:\n'+fileName+(u.changed?'\n\n※ 문서번호가 기존 문서와 겹쳐 새 번호('+d.docNo+')로 저장했습니다.':''));
+  } else {
+    setBadge('⚠️ 저장 실패');saveDraftLocal(data);
+    alert('❌ 저장에 실패했습니다.\n인터넷 연결을 확인하고 저장 버튼을 다시 눌러 주세요.\n(작성 내용은 화면에 그대로 남아 있습니다)');
+  }
 }
 // 거래명세서 미리보기 빌드
 function buildStatementPreview(){
@@ -1481,7 +1531,10 @@ async function sendStatementEmail(){
   const vat=d.optVat?Math.round(supply*.1):0;const total=supply+vat;
   const isGwajang=d.manager.includes('문상록 과장')||d.manager.includes('과장');
   const mobile=isGwajang?'010-6231-7628':'010-5424-6147';
-  if(!confirm(`${d.email} 으로 거래명세서를 발송하시겠습니까?\n\n※ PDF 생성 및 업로드에 5~10초 소요됩니다.`))return;
+  if(!EMAIL_RE.test(d.email)){alert('이메일 주소 형식이 올바르지 않습니다.\n예: name@example.com');return;}
+  if(!d.items||!d.items.length){alert('품목을 1개 이상 입력해 주세요.');return;}
+  if(!confirm(`거래명세서를 발송합니다.\n\n받는 곳: ${d.company}${d.person?' '+d.person:''}\n이메일: ${d.email}\n품목: ${d.items.length}건\n합계: ${total.toLocaleString('ko-KR')}원\n\n※ PDF 생성 및 업로드에 5~10초 소요됩니다.`))return;
+  const _u=await ensureUniqueNo('statement'); if(_u.changed) d.docNo=_u.no;
   setBadge('PDF 생성 중...');
   buildStatementPreview();
   await new Promise(r=>setTimeout(r,500));
@@ -1515,12 +1568,12 @@ async function sendStatementEmail(){
   emailjs.send('service_1kdhkid','template_fdtn3vj',params)
     .then(()=>{
       alert('✅ 이메일 발송 완료!\n'+d.email);
+      window._sentMeta={emailSentAt:new Date().toISOString(),emailTo:d.email};
       saveStatementSilent(trackId);
       if(d.tel&&confirm('📱 문자도 발송하시겠습니까?\n\n수신: '+d.tel)){sendSMSData(d);}
     })
     .catch(e=>{alert('❌ 발송 실패: '+(e.text||e.message||e));});
 }
-// 문자 발송: 서버 주소(SMS_ENDPOINT)가 설정되면 로그인 토큰으로 서버가 발송, 없으면 문자 앱을 열어 내용을 채워준다 (API 키는 앱에 두지 않음)
 // 문자 발송: 쿨SMS(솔라피) API로 직접 발송 (예전 방식 유지). 실패하면 문자 앱을 열어 내용을 채워준다.
 window.SMS_ENDPOINT='';
 async function smsSend(tel,text){
@@ -1550,7 +1603,7 @@ async function sendSMSData(d){
   const typeLabel=d.docType==='statement'?'거래명세서':'견적서';
   const msg=`[화천이티씨]\n${typeLabel}를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
   const ok=await smsSend(d.tel,msg);
-  if(ok){if(d.docType==='statement')saveStatementSilent();else saveDocSilent();}
+  if(ok){window._sentMeta={smsSentAt:new Date().toISOString()};if(d.docType==='statement')saveStatementSilent();else saveDocSilent();}
 }
 // ════════════════════════════════════
 function onManagerChange(v){
@@ -1908,6 +1961,7 @@ function setFormData(d){
 function sched(){isDirty=true;}
 function setBadge(m){}
 function newDoc(){
+  window._loadedDocNo=null;
   items=[];docId=null;
   ['c-company','c-person','c-tel','c-addr','q-manager-custom',
    'r-delivery-days','r-delivery-extra','r-payment','r-note'].forEach(id=>document.getElementById(id).value='');
@@ -1968,16 +2022,26 @@ function renderDocs(){
     if(_isUnread(v)&&v.savedAt){const days=Math.floor((Date.now()-new Date(v.savedAt).getTime())/86400000);if(days>=3)waitBadge=pill('#fde8e6','#c0281c','⏰ '+days+'일째 미확인');}
     const g=grp[(v.company||'')+'|'+(v.date||'')];
     const grpBadge=(v.company&&g>1)?pill('#eef1f5','#5b6675','같은 날 '+g+'건'):'';
+    const stPill=v.status==='won'?pill('#1a7c3e','#fff','✅ 수주'):(v.status==='lost'?pill('#999','#fff','✖ 취소'):'');
+    const sentPill=v.emailSentAt?pill('#e8f1fb','#1a4f8b','📧 발송 '+fmtDt(v.emailSentAt)):'';
+    const smsPill=v.smsSentAt?pill('#eaf6ee','#1a7c3e','💬 문자'):'';
+    let expPill='';
+    if(!isStmt&&v.status!=='won'&&v.status!=='lost'&&v.date){
+      const n=parseInt(String(v.valid||'30').replace(/\D/g,''))||30;
+      const base=new Date(v.date+'T00:00:00');
+      if(!isNaN(base.getTime())){const left=Math.ceil((base.getTime()+n*86400000-Date.now())/86400000);
+        if(left<0&&left>=-30)expPill=pill('#eee','#777','만료됨');else if(left>=0&&left<=5)expPill=pill('#fff3cd','#8a6200','⏳ 만료 '+left+'일 전');}
+    }
     return `
     <div class="doc-card">
       <div class="doc-info">
-        <div class="doc-title-text">${badge}${readBadge}${waitBadge}${grpBadge}${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
+        <div class="doc-title-text">${badge}${stPill}${expPill}${sentPill}${smsPill}${readBadge}${waitBadge}${grpBadge}${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
         <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
       </div>
       <div class="doc-actions">
         <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
         <button class="btn-sm" onclick="cloneDoc('${k}')">복제</button>
-        ${isStmt?'':`<button class="btn-sm" onclick="quoteToStatement('${k}')">명세서로</button>`}
+        ${isStmt?'':`<button class="btn-sm" onclick="quoteToStatement('${k}')">명세서로</button><button class="btn-sm" onclick="setDocStatus('${k}','won')">${v.status==='won'?'수주 해제':'수주'}</button><button class="btn-sm" onclick="copyLedger('${k}')">수금대장 복사</button>`}
         <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
       </div>
     </div>`;
@@ -1989,6 +2053,7 @@ function renderDocs(){
 }
 function cloneDoc(key){
   const d=getDocs2()[key]; if(!d){alert('문서를 찾을 수 없습니다.');return;}
+  window._loadedDocNo=null;
   if(d.docType==='statement'){
     setSFormData(d);setDocType('statement');
     genSDocNo();document.getElementById('s-date').value=new Date().toISOString().slice(0,10);
@@ -2001,7 +2066,33 @@ function cloneDoc(key){
   isDirty=true;
   alert('복제했습니다.\n새 문서번호로 작성 중이며, 저장 버튼을 눌러야 저장됩니다.');
 }
+async function setDocStatus(key,status){
+  const d=getDocs2()[key]; if(!d)return;
+  const next=(d.status===status)?'':status;
+  try{
+    const {doc,setDoc,collection}=window._fbFns;
+    await setDoc(doc(collection(window._db,'quotes'),d.docNo),{status:next},{merge:true});
+    d.status=next; renderDocs();
+  }catch(e){alert('상태 저장에 실패했습니다. 인터넷 연결을 확인해 주세요.');}
+}
+function copyLedger(key){
+  const d=getDocs2()[key]; if(!d)return;
+  const t=calcDocTotal(d);
+  const first=(d.items&&d.items[0])?d.items[0].name:'';
+  const n=(d.items||[]).length;
+  const dt=(d.date||'').split('-'); const md=dt.length===3?(+dt[1])+'/'+(+dt[2]):'';
+  const text=`${d.company||'거래처'} ${first}${n>1?' 외 '+(n-1)+'건':''} ${t.total.toLocaleString('ko-KR')}원(VAT${d.optVat?'포함':'별도'}) ${md}`.trim();
+  const done=()=>alert('복사했습니다. 수금대장에 붙여 넣어 등록하세요.\n\n'+text);
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done,()=>alert('복사 권한이 없어 직접 복사해 주세요.\n\n'+text)); else alert('직접 복사해 주세요.\n\n'+text);
+}
+function viewCustDocs(id){
+  const c=getCusts().find(x=>x.id===id); if(!c)return;
+  document.getElementById('doc-search').value=c.company||'';
+  setDocsFilter('all');
+  showTab('docs',document.querySelectorAll('#appbar .tabs button')[2]);
+}
 function quoteToStatement(key){
+  window._loadedDocNo=null;
   applyQuoteDoc(key);
   setDocType('statement');
   showTab('statement',document.querySelectorAll('#appbar .tabs button')[1]);
@@ -2010,6 +2101,7 @@ function loadDoc(key){
   const docs=getDocs2();
   if(docs[key]){
     const d=docs[key];
+    window._loadedDocNo=d.docNo;
     if(d.docType==='statement'){
       setSFormData(d);
       setDocType('statement');
@@ -2120,6 +2212,7 @@ function renderCustomers(){
       <div class="cust-detail">${c.person?`담당: ${c.person}<br>`:''}${c.tel?`TEL: ${c.tel}<br>`:''}${c.email?`Email: ${c.email}<br>`:''}</div>
       <div class="cust-actions">
         <button class="btn-sm btn-primary" onclick="applyCustSwitch(${c.id})">적용</button>
+        <button class="btn-sm" onclick="viewCustDocs(${c.id})">견적 이력</button>
         <button class="btn-sm btn-danger" onclick="delCust(${c.id})">삭제</button>
       </div>
     </div>`;
@@ -2458,26 +2551,28 @@ function doLogout(){
 // ════════════════════════════════════
 async function saveDoc(){
   if(!isDirty){alert('수정된 내용이 없습니다.\n(변경 사항이 있을 때만 저장됩니다)');return;}
+  const u=await ensureUniqueNo('quote');
   const d=getFormData();
   const company=d.company||'거래처';
   const firstItem=d.items&&d.items.length>0?d.items[0].name:'';
   const fileName=firstItem?`${company}_${firstItem}_견적서`:`${company}_견적서`;
   const data={...d,savedAt:new Date().toISOString(),fileName};
+  await mergePrev(data);
   setBadge('저장 중...');
-  // Firestore 저장
+  let ok=false;
   try{
     const {doc,setDoc,collection}=window._fbFns;
-    const db=window._db;
-    await setDoc(doc(collection(db,'quotes'),d.docNo),data);
-    setBadge('저장됨 ✓');
-    isDirty=false;
-  }catch(e){
-    setBadge('⚠️ 오프라인 저장');
-    console.log('Firestore 저장 실패',e);
+    await setDoc(doc(collection(window._db,'quotes'),d.docNo),data);
+    ok=true;
+  }catch(e){console.log('Firestore 저장 실패',e);}
+  if(ok){
+    setBadge('저장됨 ✓');isDirty=false;window._loadedDocNo=d.docNo;
+    if(d.company) autoRegisterCust(d.company, d.person, d.tel, getEmail());
+    alert('저장되었습니다:\n'+fileName+(u.changed?'\n\n※ 문서번호가 기존 문서와 겹쳐 새 번호('+d.docNo+')로 저장했습니다.':''));
+  } else {
+    setBadge('⚠️ 저장 실패');saveDraftLocal(data);
+    alert('❌ 저장에 실패했습니다.\n인터넷 연결을 확인하고 저장 버튼을 다시 눌러 주세요.\n(작성 내용은 화면에 그대로 남아 있습니다)');
   }
-  // 거래처 자동 등록 (거래처명+담당자 조합으로 중복 방지)
-  if(d.company) autoRegisterCust(d.company, d.person, d.tel, getEmail());
-  alert('저장되었습니다:\n'+fileName);
 }
 
 async function loadFirestoreDocs(){
@@ -2561,7 +2656,11 @@ async function sendEmail(){
   if(!d.email){alert('수신처 이메일을 입력해주세요.');return;}
   if(!d.company){alert('거래처명을 입력해주세요.');return;}
 
-  if(!confirm(`${d.email} 으로 견적서를 발송하시겠습니까?\n\n※ PDF 생성 및 업로드에 5~10초 소요됩니다.`))return;
+  if(!EMAIL_RE.test(d.email)){alert('이메일 주소 형식이 올바르지 않습니다.\n예: name@example.com');return;}
+  if(!d.items||!d.items.length){alert('품목을 1개 이상 입력해 주세요.');return;}
+  const _t=calcDocTotal(d);
+  if(!confirm(`견적서를 발송합니다.\n\n받는 곳: ${d.company}${d.person?' '+d.person:''}\n이메일: ${d.email}\n품목: ${d.items.length}건\n합계: ${_t.total.toLocaleString('ko-KR')}원\n\n※ PDF 생성 및 업로드에 5~10초 소요됩니다.`))return;
+  const _u=await ensureUniqueNo('quote'); if(_u.changed) d.docNo=_u.no;
   setBadge('PDF 생성 중...');
 
   // 합계 계산
@@ -2680,13 +2779,14 @@ async function sendEmail(){
   emailjs.send('service_1kdhkid','template_fdtn3vj',params)
     .then(()=>{
       alert('✅ 이메일 발송 완료!\n'+d.email);
+      window._sentMeta={emailSentAt:new Date().toISOString(),emailTo:d.email};
       saveDocSilent(trackId);
       // 문자 발송 여부 확인
       if(d.tel){
         const from='01054246147';
         const msg=`[화천이티씨]\n견적서를 발송하였습니다.\n이메일 확인 부탁드립니다.\n문의: ${mobile}`;
         if(confirm(`📱 문자도 발송하시겠습니까?\n\n수신: ${d.tel}\n\n${msg}`)){
-          smsSend(d.tel,msg);
+          smsSend(d.tel,msg).then(ok=>{if(ok){window._sentMeta={smsSentAt:new Date().toISOString()};saveDocSilent();}});
         }
       }
     })
