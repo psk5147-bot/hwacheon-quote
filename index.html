@@ -536,13 +536,250 @@ table.item-table tbody tr:hover{background:#fafaf7}
 .cust-card .cust-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid #eef1f6}
 .cust-card .cust-actions .btn-sm{min-height:40px;border-radius:10px;font-size:13px}
 @media(max-width:640px){#panel-customers{padding:14px 12px}.customer-list{grid-template-columns:1fr}}
+/* ===== 수금 관리 디자인 통일 (남색 테마, v2026-11-16) ===== */
+@media screen{
+:root{--primary:#0b3d91;--primary-light:#1d58c9;--accent:#0b3d91;--accent-light:#1d58c9;--bg:#eef1f6;--card:#fff;--border:#d5dcea;--text:#1a2540;--muted:#51607a;--text3:#8a97ad;--danger:#d64545;--success:#168a58;--navy:#0b3d91;--navy-d:#0b2e6f;--font:'Noto Sans KR','Malgun Gothic','맑은 고딕',sans-serif}
+html,body{background:var(--bg)}
+body{font-family:var(--font);color:var(--text)}
+#main-app button,#main-app input,#main-app select,#main-app textarea,.modal-overlay button,.modal-overlay input,.modal-overlay select,.modal-overlay textarea{font-family:var(--font)}
+
+/* ----- 상단 헤더 / 탭 ----- */
+#appbar{position:static;background:var(--bg);color:var(--navy-d);box-shadow:none;max-width:1100px;margin:0 auto;padding:22px 20px 0}
+#appbar .appbar-top{padding:0;height:auto;min-height:40px;gap:10px}
+#appbar .logo{font-size:26px;font-weight:700;color:var(--navy-d);letter-spacing:-1px;line-height:1.2}
+#appbar .logo span{color:var(--navy)}
+#appbar .ab-btn{background:#fff;border:1px solid var(--border);color:var(--navy);height:36px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700}
+#appbar .ab-btn:hover{background:#f3f6fc}
+#appbar .ab-install{background:#fff;border-color:var(--navy);color:var(--navy)}
+#appbar .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-top:none;padding:14px 0 0;overflow:visible}
+#appbar .tabs button{height:44px;padding:0 6px;border-radius:14px;border:1px solid var(--border);background:#fff;color:var(--muted);font-size:15px;font-weight:500;line-height:1.2;white-space:normal;word-break:keep-all;display:flex;align-items:center;justify-content:center;text-align:center;transition:background .15s,color .15s}
+#appbar .tabs button:hover{background:#f3f6fc;color:var(--navy);border-color:var(--border)}
+#appbar .tabs button.active,#appbar .tabs button.active:hover{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+
+/* ----- 패널 공통 여백 ----- */
+#panel-quote,#panel-docs,#panel-customers,#panel-statement{max-width:1100px;margin:0 auto;padding:14px 20px 36px}
+#panel-statement>div{padding:0!important;max-width:none!important}
+.empty-msg{color:var(--text3);padding:40px 16px;font-size:14px}
+
+/* ----- 카드(섹션) ----- */
+.section-card{background:#fff;border:1px solid #e3e8f2;border-radius:18px;box-shadow:0 2px 10px rgba(15,40,90,.05);margin-bottom:14px;overflow:hidden}
+.section-card .card-head{background:#fff!important;border-bottom:1px solid #eef1f6;padding:0 18px;min-height:56px;font-size:15px;font-weight:700;color:var(--navy-d);letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+.section-card .card-head>span{display:inline-flex;align-items:center}
+.section-card .card-head .btn-sm{height:34px;border-radius:999px;padding:0 14px;font-size:13px}
+.section-card .card-body{padding:18px 18px 8px}
+.fg{gap:6px;margin-bottom:14px}
+.fg-row{gap:0 12px}
+.fg label,.form-group label{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:-.2px}
+.form-group{gap:6px}
+.remarks-grid{gap:14px 12px}
+.item-card-field label{font-size:12px;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:-.2px}
+
+/* ----- 입력칸 (높이 44 / 둥글기 12 / 테두리 #d5dcea) ----- */
+.fi,.fg input,.fg select,.fg textarea,.form-group input,.form-group select,.form-group textarea,
+.item-search-bar input,#cust-search-main,#panel-customers #cust-search-main,.docs-toolbar input,#cust-q,#quote-doc-q,#any-doc-q,
+.opt-group input[type=number],.opt-group input[type=text],.opt-group select,.delivery-row input,#r-delivery-extra,
+.item-card-field input,.item-card-field select{
+  height:44px;border:1px solid var(--border)!important;border-radius:12px!important;background:#fff;color:var(--text);
+  padding:0 14px;font-size:14px;line-height:1.3;box-shadow:none;outline:none;
+  font-family:var(--font);transition:border-color .15s}
+.fg textarea,.form-group textarea,textarea.fi{height:auto;min-height:92px;padding:12px 14px;line-height:1.5;resize:vertical}
+.fi:focus,.fg input:focus,.fg select:focus,.fg textarea:focus,.form-group input:focus,.form-group select:focus,.form-group textarea:focus,
+.item-search-bar input:focus,#cust-search-main:focus,.docs-toolbar input:focus,#cust-q:focus,#quote-doc-q:focus,#any-doc-q:focus,
+.opt-group input:focus,.opt-group select:focus,.delivery-row input:focus,#r-delivery-extra:focus,.item-card-field input:focus,.item-card-field select:focus{
+  border-color:var(--navy)!important;box-shadow:none}
+.fi::placeholder,.fg input::placeholder,.form-group input::placeholder,.fg textarea::placeholder,.item-search-bar input::placeholder,#cust-search-main::placeholder,.docs-toolbar input::placeholder,#cust-q::placeholder,#quote-doc-q::placeholder,#any-doc-q::placeholder,.delivery-row input::placeholder,#r-delivery-extra::placeholder,.item-card-field input::placeholder{color:var(--text3);opacity:1}
+input[readonly]#q-no,input[readonly]#s-no{background:#f3f6fc!important;color:var(--navy-d);font-weight:700;letter-spacing:.2px}
+input[type=date]{min-width:0;padding-right:10px}
+/* 검색창은 수금 관리 검색창과 같은 12px 라운드 */
+.docs-toolbar input,#panel-customers #cust-search-main{max-width:none;min-height:44px}
+.item-search-bar{padding:14px 18px;gap:8px;border-bottom:0}
+.item-search-bar input{padding:0 14px}
+/* 옵션줄 */
+.opt-group input[type=number]{width:84px;padding:0 10px}
+.opt-group input[type=text]{width:96px}
+.opt-group select{min-width:72px}
+.delivery-row{gap:6px}
+.delivery-row input{padding:0 8px;text-align:center}
+.delivery-row #r-delivery-extra{text-align:left;padding:0 14px;font-size:14px!important}
+.delivery-row span{font-size:13px;color:var(--text)}
+
+/* ----- select (화살표 + 넉넉한 폭) ----- */
+.fi:is(select),.fg select,.form-group select,.opt-group select,.item-card-field select{
+  -webkit-appearance:none;appearance:none;cursor:pointer;padding:0 36px 0 14px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2351607a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center}
+select:focus{outline:none}
+
+/* ----- 버튼 ----- */
+.btn-sm{height:40px;padding:0 16px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;line-height:1;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn-sm:hover{background:#f3f6fc;border-color:#b9c8e6}
+.btn-sm.btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn-sm.btn-primary:hover{background:var(--navy-d);border-color:var(--navy-d)}
+.btn-sm.btn-danger{background:#fdecea;border-color:#f3c3c0;color:var(--danger)}
+.btn-sm.btn-danger:hover{background:#fbdcd9}
+.item-search-bar .btn-sm{height:44px;border-radius:12px}
+.item-search-bar .btn-sm[onclick*="downloadExcelTemplate"]{color:var(--text3)!important;font-size:12px!important}
+/* 하단 저장/새 문서/미리보기 큰 버튼 */
+#panel-quote>div:last-child,#panel-statement>div>div:last-child{gap:8px!important;margin-bottom:8px!important}
+#panel-quote>div:last-child .btn-sm,#panel-statement>div>div:last-child .btn-sm{height:48px;padding:0 12px!important;font-size:15px!important;font-weight:700!important;border-radius:12px;min-width:0}
+/* 불러오기 버튼(입력줄 옆) */
+.fg [style*="display:flex"] .btn-sm{height:44px}
+
+/* ----- 품목 표 (PC) ----- */
+#item-table-wrap,#s-item-table-wrap{margin:0 18px 14px;border:1px solid #e3e8f2;border-radius:14px;overflow:auto;background:#fff}
+#item-table-wrap>table.item-table,#s-item-table-wrap>table.item-table{min-width:880px}
+table.item-table{font-size:13px}
+table.item-table thead tr{background:#f3f6fc}
+table.item-table th{padding:12px 8px;border:0;border-bottom:1px solid #e3e8f2;color:var(--navy-d);font-weight:700;font-size:12px;background:#f3f6fc;white-space:nowrap}
+table.item-table td{border:0;border-bottom:1px solid #eef1f6;padding:6px 6px;color:var(--text)}
+table.item-table tbody tr:last-child td{border-bottom:0}
+table.item-table tbody tr:hover{background:#f8faff}
+table.item-table td input,table.item-table td select{height:36px;border:1px solid #e3e8f2;border-radius:8px;background:#fff;padding:0 10px;font-size:13px;color:var(--text);width:100%}
+table.item-table td input:focus,table.item-table td select:focus{background:#fff;border-color:var(--navy);border-radius:8px}
+table.item-table td select{-webkit-appearance:none;appearance:none;padding:0 22px 0 8px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2351607a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 7px center}
+table.item-table td.num{font-weight:700;color:var(--navy-d);padding-right:12px}
+table.item-table td.center{color:var(--text3)}
+.col-qty{width:72px}.col-unit{width:76px}.col-up{width:112px}.col-amt{width:120px}.col-del{width:40px}
+.del-btn{color:#c3ccdc;font-size:18px;width:28px;height:28px;border-radius:8px}
+.del-btn:hover{color:var(--danger);background:#fdecea}
+#item-tbody td[colspan],#s-item-tbody td[colspan]{color:var(--text3)!important;padding:26px 18px!important}
+
+/* ----- 품목 카드(모바일) ----- */
+.item-card{background:#f8faff;border:1px solid #e3e8f2;border-radius:16px;padding:14px;box-shadow:none}
+.item-card-num{background:var(--navy)}
+.item-card-title{color:var(--navy-d);font-weight:700}
+.item-card-del{color:#c3ccdc}
+.item-card-amt{border-top:1px solid #e3e8f2}
+.item-card-amt-label{color:var(--muted)}
+.item-card-amt-value{color:var(--navy-d);font-size:16px;letter-spacing:-.4px}
+
+/* ----- 옵션/합계 ----- */
+#panel-quote .section-card>div[style*="fafaf8"]{background:#fff!important;border-top:1px solid #eef1f6!important;padding:14px 18px!important}
+.options-row{gap:10px 20px}
+.opt-group{gap:8px}
+.opt-group label{font-size:13px;color:var(--text);cursor:pointer}
+input[type=checkbox]{accent-color:var(--navy);width:18px;height:18px;cursor:pointer;vertical-align:middle}
+.total-section{background:#f8faff;border-top:1px solid #eef1f6;padding:16px 18px}
+.tgrid{gap:6px 24px}
+.tgrid .tl{color:var(--muted);font-size:13px}
+.tgrid .tv{font-size:14px;color:var(--text)}
+.tgrid .gl{color:var(--navy-d);font-size:15px}
+.tgrid .gv{color:var(--navy-d);font-size:22px;letter-spacing:-.8px}
+#t-disc{color:var(--danger)!important}
+#s-opt-vat+label{font-size:13px!important;color:var(--text)}
+
+/* ----- 자동완성 팝업 ----- */
+.db-popup{top:50px;border:1px solid #e3e8f2;border-radius:14px;box-shadow:0 10px 30px rgba(15,40,90,.16);overflow-x:hidden;padding:4px}
+.db-item{padding:10px 12px;border-bottom:1px solid #eef1f6;border-radius:10px;gap:12px}
+.db-item:last-child{border-bottom:0}
+.db-item:hover{background:#f3f6fc}
+.db-item .iname{font-size:13px;font-weight:700;color:var(--text)}
+.db-item .imeta{font-size:12px;color:var(--text3);margin-top:2px}
+.db-item div[style*="1a3a5c"]{color:var(--navy)!important;font-weight:700!important}
+
+/* ----- 문서함 ----- */
+#panel-docs{padding-top:14px}
+.docs-toolbar{gap:8px;margin-bottom:12px}
+.docs-toolbar input{min-height:44px;height:44px}
+.docs-toolbar .btn-sm{height:44px;min-height:44px;border-radius:12px;padding:0 18px}
+.dc-chips{gap:8px;padding:2px 0;margin-bottom:12px}
+.dc-chips button{height:36px;min-height:36px;padding:0 16px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.dc-chips button.on{font-weight:700}
+.dc-hero{border-radius:22px}
+.dc-sort button{font-family:var(--font)}
+.doc-card .doc-actions .btn-sm,.cust-card .cust-actions .btn-sm{height:40px;min-height:40px;border-radius:12px;font-size:13px}
+.doc-card .doc-meta-text{font-size:12px;line-height:1.5}
+.dc-pill{font-size:11px;padding:4px 10px}
+.dc-pill[style*="#1a5c2e"]{background:var(--success)!important}
+.dc-pill[style*="#fde8e6"]{background:#fdecea!important;color:var(--danger)!important}
+.dc-pill[style*="#eef1f5"]{background:#eef1f6!important;color:#7b88a0!important}
+.dc-pill[style*="#e8f1fb"]{background:#e8eefb!important;color:var(--navy)!important}
+.dc-pill[style*="#eaf6ee"]{background:#e6f4ec!important;color:var(--success)!important}
+.dc-pill[style*="#eee;color:#777"]{background:#eef1f6!important;color:#7b88a0!important}
+.dc-pill[style*="#fff3cd"]{background:#fff6e0!important;color:#a86a00!important}
+.dc-badges span[style*="#1a7c3e"]{background:#e6f4ec!important;color:var(--success)!important;border:1px solid #bfe3cf;border-radius:99px!important;padding:3px 9px!important;margin-right:0!important}
+.dc-badges span[style*="#f0e6d2"]{background:#fff6e0!important;color:#a86a00!important;border:1px solid #f0d9a0;border-radius:99px!important;padding:3px 9px!important;margin-right:0!important}
+.dc-badges span[style*="background:#eee"]{background:#eef1f6!important;color:#7b88a0!important;border:1px solid var(--border);border-radius:99px!important;padding:3px 9px!important;margin-right:0!important}
+
+/* ----- 거래처 관리 ----- */
+#panel-customers>div[style*="flex-wrap"]{gap:8px!important;margin-bottom:12px!important}
+#panel-customers>div[style*="flex-wrap"] .btn-sm{height:44px;min-height:44px;border-radius:12px;padding:0 18px}
+#dup-cust-banner{background:#fff6e0!important;border:1px solid #f0d9a0!important;color:#a86a00;border-radius:14px!important;padding:14px 18px!important;font-size:13px!important}
+#dup-cust-banner div[style*="color:#555"]{color:#7a5a12!important}
+.cust-card[style*="ffc107"]{border-color:#f0d9a0!important;background:#fffbf0!important}
+.cust-card{display:flex;flex-direction:column}
+.cust-card .cust-detail{color:var(--text3);margin-bottom:12px}
+.cust-card .cust-actions{margin-top:auto}
+
+/* ----- 미리보기 상단 버튼 / 배경 (견적서 본문은 그대로) ----- */
+#panel-preview{padding:0 0 28px}
+#preview-actions{max-width:1100px;margin:0 auto;padding:14px 20px;gap:8px;border-bottom:0!important;display:flex!important;flex-wrap:wrap}
+#preview-actions button{height:46px;padding:0 16px!important;border-radius:12px!important;font-size:14px!important;font-weight:700!important;letter-spacing:-.2px;transition:filter .15s}
+#preview-actions button:hover{filter:brightness(.95)}
+#preview-actions>button:first-child{background:#fff!important;color:var(--navy)!important;border:1px solid var(--border)!important}
+#preview-email-btn{background:var(--success)!important}
+#preview-sms-btn{background:var(--primary-light)!important}
+#preview-actions>button:last-child{background:var(--navy)!important}
+#preview-wrap{background:#dfe5ef;border-radius:0}
+#panel-preview #preview-wrap{border-top:1px solid #d5dcea;border-bottom:1px solid #d5dcea}
+
+/* ----- 모달 / 팝업 ----- */
+.modal-overlay{background:rgba(15,25,50,.5)}
+.modal-box{border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(11,30,70,.28);max-height:90vh;overflow-y:auto;border:1px solid #e3e8f2}
+.modal-box h3{font-size:18px;font-weight:700;color:var(--navy-d);letter-spacing:-.5px;margin-bottom:16px}
+.modal-box .modal-footer{gap:8px;margin-top:18px}
+.modal-box .modal-footer .btn-sm{height:44px;min-width:88px;border-radius:12px;font-size:14px}
+.modal-box #cust-list,.modal-box #quote-doc-list,.modal-box #any-doc-list{max-height:320px}
+.modal-box .db-item{border-bottom:1px solid #eef1f6;padding:12px 14px;border-radius:0}
+.modal-box .db-item:hover{background:#f3f6fc;border-radius:10px}
+.modal-box input[style]{margin-bottom:12px!important}
+}
+
+/* ----- 모바일 ----- */
+@media screen and (max-width:640px){
+  #appbar{padding:16px 14px 0}
+  #appbar .logo{font-size:22px}
+  #appbar .tabs{gap:6px;padding-top:12px}
+  #appbar .tabs button{height:48px;padding:0 3px;font-size:13px;border-radius:12px;line-height:1.25}
+  #panel-quote,#panel-docs,#panel-customers,#panel-statement{padding:12px 14px 32px}
+  #panel-preview{padding:0 0 24px}
+  #preview-actions{padding:12px 14px;gap:8px;display:grid!important;grid-template-columns:1fr 1fr}
+  #preview-actions button{flex:none!important;width:100%;min-width:0;padding:0 8px!important;font-size:13px!important;height:46px}
+  #preview-actions>button:first-child{order:1}
+  #preview-actions>button:last-child{order:2}
+  #preview-email-btn{order:3}
+  #preview-sms-btn{order:4}
+  .section-card .card-head{padding:0 14px;min-height:52px;font-size:14px}
+  .section-card .card-body{padding:14px 14px 4px}
+  .section-card .card-head .btn-sm{height:34px;padding:0 11px;font-size:12px}
+  .item-search-bar{padding:12px 14px}
+  #item-table-wrap,#s-item-table-wrap{margin:0 14px 14px;border:0;border-radius:0;overflow:visible}
+  #item-card-list{padding:0 0 4px!important}
+  #s-item-card-list{padding:0 14px 14px!important}
+  .options-row{gap:10px 16px}
+  .total-section{padding:14px}
+  #panel-quote .section-card>div[style*="fafaf8"]{padding:12px 14px!important}
+  .opt-group label{font-size:14px}
+  .tgrid .gv{font-size:20px}
+  #panel-quote>div:last-child,#panel-statement>div>div:last-child{gap:6px!important}
+  #panel-quote>div:last-child .btn-sm,#panel-statement>div>div:last-child .btn-sm{font-size:13px!important;padding:0 4px!important;height:46px}
+  .docs-toolbar .btn-sm{padding:0 14px}
+  .dc-chips{margin-bottom:10px}
+  .doc-card .doc-actions{gap:6px}
+  .modal-overlay{align-items:flex-end}
+  .modal-box{width:100%;max-width:none!important;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));max-height:88vh;border-bottom:0}
+}
+@media screen and (max-width:430px){
+  #appbar .logo{font-size:22px}
+  .delivery-row{flex-wrap:wrap}
+}
+
 </style>
 <link rel="manifest" href="manifest.json?v=20261115" id="manifest-link">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="견적서 관리">
-<meta name="theme-color" content="#1a3a5c">
+<meta name="theme-color" content="#eef1f6">
 <link rel="apple-touch-icon" id="apple-icon" href="icon.png?v=20261115">
 <link rel="icon" type="image/png" href="icon.png?v=20261115">
 <script>
