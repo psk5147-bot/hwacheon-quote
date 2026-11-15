@@ -490,6 +490,38 @@ table.item-table tbody tr:hover{background:#fafaf7}
 }
 @media(max-width:600px){.item-search-bar{flex-wrap:wrap}.item-search-bar>div:first-child{flex:1 1 100%!important}}
 .doc-actions{flex-wrap:wrap;justify-content:flex-end}
+
+/* ===== 문서함 개편 (남색 통일) ===== */
+#panel-docs{max-width:1100px;margin:0 auto;padding:18px 16px}
+.docs-toolbar input{max-width:none;border-radius:999px;padding:10px 16px;border-color:#d5dcea;min-height:42px}
+.docs-toolbar .btn-sm{border-radius:999px;min-height:42px;padding:0 18px}
+.dc-chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding:2px;scrollbar-width:none}.dc-chips::-webkit-scrollbar{display:none}
+.dc-chips button{flex:none;border:1px solid #d5dcea;background:#fff;color:#51607a;border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:var(--font);min-height:38px}
+.dc-chips button.on{background:#0b3d91;border-color:#0b3d91;color:#fff;font-weight:700}
+.dc-hero{display:flex;gap:18px;justify-content:space-between;align-items:stretch;flex-wrap:wrap;background:linear-gradient(135deg,#0a2a66 0%,#0b3d91 55%,#1d58c9 100%);border-radius:20px;padding:22px 24px;color:#fff;box-shadow:0 10px 30px rgba(11,61,145,.25);margin-bottom:12px}
+.dc-hero-l{font-size:13px;opacity:.85;margin-bottom:6px}.dc-hero-l small{font-size:11px;opacity:.7;margin-left:4px}
+.dc-hero-n{font-size:32px;font-weight:700;letter-spacing:-1.2px;line-height:1.1}
+.dc-hero-s{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;opacity:.92}.dc-hero-s b{font-weight:700}
+.dc-hero-r{display:flex;gap:10px;align-items:flex-end}
+.dc-kpi{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 14px;min-width:96px;display:flex;flex-direction:column;gap:3px}
+.dc-kpi span{font-size:11px;opacity:.8}.dc-kpi b{font-size:16px;font-weight:700}.dc-kpi b.up{color:#9ff0c4}.dc-kpi b.dn{color:#ffd48a}
+.dc-sort{display:inline-flex;gap:4px;background:#e9edf4;border-radius:999px;padding:3px;margin-bottom:12px}
+.dc-sort button{border:none;background:none;padding:6px 14px;border-radius:999px;font-size:12.5px;color:#51607a;cursor:pointer;font-family:var(--font);font-weight:500;min-height:32px}
+.dc-sort button.on{background:#fff;color:#0b3d91;font-weight:700;box-shadow:0 1px 4px rgba(15,40,90,.12)}
+.doc-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px}
+.doc-list>.empty-msg,.doc-list>.btn-sm{grid-column:1/-1}
+.doc-card{border:1px solid #e3e8f2;border-radius:18px;padding:16px 18px;box-shadow:0 2px 10px rgba(15,40,90,.05);display:flex;flex-direction:column;align-items:stretch;gap:12px;min-width:0}
+.doc-card:hover{border-color:#b9c8e6}
+.doc-card .doc-info{min-width:0}
+.dc-badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.dc-pill{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.dc-company{font-size:17px;font-weight:700;color:#1a2540;letter-spacing:-.4px;overflow-wrap:anywhere}
+.dc-item{font-size:13px;color:#51607a;margin-top:3px;overflow-wrap:anywhere}
+.dc-amt{font-size:22px;font-weight:700;color:#0b2e6f;letter-spacing:-.8px;margin-top:10px}.dc-amt small{font-size:11px;font-weight:400;color:#8a97ad;margin-left:6px}
+.doc-card .doc-meta-text{margin-top:8px;color:#8a97ad;font-size:11.5px}
+.doc-card .doc-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px;padding-top:12px;border-top:1px solid #eef1f6;justify-content:stretch;width:100%}
+.doc-card .doc-actions .btn-sm{min-height:40px;border-radius:10px;font-size:13px}
+@media(max-width:640px){#panel-docs{padding:14px 12px}.dc-hero{padding:18px}.dc-hero-n{font-size:26px}.dc-hero-r{width:100%}.dc-kpi{flex:1}.doc-list{grid-template-columns:1fr}}
 </style>
 <link rel="manifest" href="#" id="manifest-link">
 <meta name="mobile-web-app-capable" content="yes">
@@ -868,15 +900,16 @@ if('serviceWorker' in navigator){
 <!-- 문서함 -->
 <div id="panel-docs" class="tab-panel">
   <div class="docs-toolbar">
-    <input type="text" id="doc-search" placeholder="🔍 문서 검색" oninput="renderDocs()">
+    <input type="text" id="doc-search" placeholder="🔍 문서 검색 (거래처·문서번호)" oninput="renderDocs()">
     <button class="btn-sm" onclick="renderDocs()">새로고침</button>
   </div>
-  <div style="display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
-    <button id="docs-tab-all"   onclick="setDocsFilter('all')"       style="flex:1;padding:8px;border:none;background:var(--primary);color:#fff;font-family:var(--font);font-size:12px;cursor:pointer">전체</button>
-    <button id="docs-tab-quote" onclick="setDocsFilter('quote')"     style="flex:1;padding:8px;border:none;background:#f7f6f2;color:var(--text);font-family:var(--font);font-size:12px;cursor:pointer;border-left:1px solid var(--border)">견적서</button>
-    <button id="docs-tab-statement" onclick="setDocsFilter('statement')" style="flex:1;padding:8px;border:none;background:#f7f6f2;color:var(--text);font-family:var(--font);font-size:12px;cursor:pointer;border-left:1px solid var(--border)">거래명세서</button>
-    <button id="docs-tab-unread" onclick="setDocsFilter('unread')" style="flex:1;padding:8px;border:none;background:#f7f6f2;color:var(--text);font-family:var(--font);font-size:12px;cursor:pointer;border-left:1px solid var(--border)">미확인</button>
+  <div class="dc-chips">
+    <button id="docs-tab-all" class="on" onclick="setDocsFilter('all')">전체</button>
+    <button id="docs-tab-quote" onclick="setDocsFilter('quote')">견적서</button>
+    <button id="docs-tab-statement" onclick="setDocsFilter('statement')">거래명세서</button>
+    <button id="docs-tab-unread" onclick="setDocsFilter('unread')">미확인</button>
   </div>
+  <div id="doc-summary"></div>
   <div class="doc-list" id="doc-list"></div>
 </div>
 
@@ -1986,37 +2019,57 @@ function setDocsFilter(f){
   ['all','quote','statement','unread'].forEach(t=>{
     const btn=document.getElementById('docs-tab-'+t);
     if(!btn)return;
-    const active=t===f;
-    btn.style.background=active?'var(--primary)':'#f7f6f2';
-    btn.style.color=active?'#fff':'var(--text)';
-    btn.style.fontWeight=active?'700':'400';
+    btn.classList.toggle('on',t===f);
   });
   renderDocs();
 }
 let _docsLimit=30,_docsSig='';
 function _isUnread(v){const st=v.trackId&&window._readStatus[v.trackId];return !!(st&&!st.opened);}
+let _docsSort='new';
+function setDocsSort(s){_docsSort=s;renderDocs();}
+function _docExpLeft(v){
+  if(v.docType==='statement'||v.status==='won'||v.status==='lost'||!v.date)return null;
+  const n=parseInt(String(v.valid||'30').replace(/\D/g,''))||30;
+  const base=new Date(v.date+'T00:00:00'); if(isNaN(base.getTime()))return null;
+  return Math.ceil((base.getTime()+n*86400000-Date.now())/86400000);
+}
+function _dcWon(n){return Math.round(n).toLocaleString('ko-KR')+'원';}
+function _dcK(n){const a=Math.abs(n);if(a>=1e8)return (a/1e8).toFixed(2).replace(/\.?0+$/,'')+'억';if(a>=1e4)return Math.round(a/1e4).toLocaleString('ko-KR')+'만';return Math.round(a).toLocaleString('ko-KR');}
 function renderDocs(){
   const q=(document.getElementById('doc-search').value||'').toLowerCase();
-  const sig=q+'|'+_docsFilter; if(sig!==_docsSig){_docsSig=sig;_docsLimit=30;}
+  const sig=q+'|'+_docsFilter+'|'+_docsSort; if(sig!==_docsSig){_docsSig=sig;_docsLimit=30;}
   const docs=getDocs2();
   const list=document.getElementById('doc-list');
-  const entries=Object.entries(docs)
+  const tot=v=>{try{return calcDocTotal(v).total||0;}catch(e){return 0;}};
+  let entries=Object.entries(docs)
     .filter(([k,v])=>{
       if(_docsFilter==='quote'&&v.docType==='statement')return false;
       if(_docsFilter==='statement'&&v.docType!=='statement')return false;
       if(_docsFilter==='unread'&&!_isUnread(v))return false;
       return !q||( (v.docNo||'').toLowerCase().includes(q)||(v.company||'').toLowerCase().includes(q)||(v.fileName||'').toLowerCase().includes(q));
-    })
-    .sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+    });
+  if(_docsSort==='amt') entries.sort((a,b)=>tot(b[1])-tot(a[1]));
+  else if(_docsSort==='name') entries.sort((a,b)=>((a[1].company||'~').localeCompare(b[1].company||'~','ko'))||((b[1].savedAt||'')>(a[1].savedAt||'')?1:-1));
+  else entries.sort((a,b)=>((b[1].savedAt||'')>(a[1].savedAt||''))?1:-1);
+  /* 상단 요약 */
+  const monthKey=new Date().toISOString().slice(0,7);
+  const useStmt=_docsFilter==='statement';
+  const base=entries.filter(([k,v])=>useStmt?v.docType==='statement':v.docType!=='statement');
+  const sumAmt=base.reduce((s,[k,v])=>s+tot(v),0);
+  const mCnt=entries.filter(([k,v])=>(v.date||'').startsWith(monthKey)).length;
+  const unreadCnt=entries.filter(([k,v])=>_isUnread(v)).length;
+  const expCnt=entries.filter(([k,v])=>{const l=_docExpLeft(v);return l!==null&&l>=0&&l<=5;}).length;
+  const sumEl=document.getElementById('doc-summary');
+  if(sumEl) sumEl.innerHTML='<div class="dc-hero"><div><div class="dc-hero-l">'+(useStmt?'거래명세서':'견적서')+' 금액 합계 <small>'+(q||_docsFilter!=='all'?'조건에 맞는 문서':'전체 문서')+'</small></div><div class="dc-hero-n">'+_dcWon(sumAmt)+'</div><div class="dc-hero-s"><span>'+(useStmt?'명세서':'견적서')+' <b>'+base.length+'건</b></span><span>이번 달 <b>'+mCnt+'건</b></span></div></div>'
+    +'<div class="dc-hero-r"><div class="dc-kpi"><span>미확인</span><b class="'+(unreadCnt?'dn':'up')+'">'+unreadCnt+'건</b></div><div class="dc-kpi"><span>만료 임박</span><b class="'+(expCnt?'dn':'up')+'">'+expCnt+'건</b></div></div></div>'
+    +'<div class="dc-sort">'+[['new','최신순'],['amt','금액순'],['name','거래처순']].map(a=>'<button class="'+(_docsSort===a[0]?'on':'')+'" onclick="setDocsSort(\''+a[0]+'\')">'+a[1]+'</button>').join('')+'</div>';
   if(!entries.length){list.innerHTML='<div class="empty-msg">'+(_docsFilter==='unread'?'미확인 문서가 없습니다.':'저장된 문서가 없습니다.')+'</div>';return;}
   const grp={};Object.values(docs).forEach(v=>{const g=(v.company||'')+'|'+(v.date||'');if(v.company)grp[g]=(grp[g]||0)+1;});
-  const pill=(bg,fg,t)=>`<span style="display:inline-block;background:${bg};color:${fg};font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">${t}</span>`;
+  const pill=(bg,fg,t)=>'<span class="dc-pill" style="background:'+bg+';color:'+fg+'">'+t+'</span>';
   const shown=entries.slice(0,_docsLimit);
   list.innerHTML=shown.map(([k,v])=>{
     const isStmt=v.docType==='statement';
-    const badge=isStmt
-      ?`<span style="display:inline-block;background:#1a5c2e;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">거래명세서</span>`
-      :`<span style="display:inline-block;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-right:6px;vertical-align:middle">견적서</span>`;
+    const badge=isStmt?'<span class="dc-pill" style="background:#1a5c2e;color:#fff">거래명세서</span>':'<span class="dc-pill" style="background:#0b3d91;color:#fff">견적서</span>';
     const readBadge=v.trackId?readBadgeHtml(v.trackId):'';
     let waitBadge='';
     if(_isUnread(v)&&v.savedAt){const days=Math.floor((Date.now()-new Date(v.savedAt).getTime())/86400000);if(days>=3)waitBadge=pill('#fde8e6','#c0281c','⏰ '+days+'일째 미확인');}
@@ -2025,26 +2078,24 @@ function renderDocs(){
     const sentPill=v.emailSentAt?pill('#e8f1fb','#1a4f8b','📧 발송 '+fmtDt(v.emailSentAt)):'';
     const smsPill=v.smsSentAt?pill('#eaf6ee','#1a7c3e','💬 문자'):'';
     let expPill='';
-    if(!isStmt&&v.status!=='won'&&v.status!=='lost'&&v.date){
-      const n=parseInt(String(v.valid||'30').replace(/\D/g,''))||30;
-      const base=new Date(v.date+'T00:00:00');
-      if(!isNaN(base.getTime())){const left=Math.ceil((base.getTime()+n*86400000-Date.now())/86400000);
-        if(left<0&&left>=-30)expPill=pill('#eee','#777','만료됨');else if(left>=0&&left<=5)expPill=pill('#fff3cd','#8a6200','⏳ 만료 '+left+'일 전');}
-    }
-    return `
-    <div class="doc-card">
-      <div class="doc-info">
-        <div class="doc-title-text">${badge}${expPill}${sentPill}${smsPill}${readBadge}${waitBadge}${grpBadge}${esc(v.fileName || (v.docNo + ' — ' + (v.company||'거래처')))}</div>
-        <div class="doc-meta-text">${v.date||''} | 담당: ${v.manager||'-'} | 저장: ${fmtDt(v.savedAt)}</div>
-      </div>
-      <div class="doc-actions">
-        <button class="btn-sm btn-primary" onclick="loadDoc('${k}')">불러오기</button>
-        <button class="btn-sm" onclick="cloneDoc('${k}')">복제</button>
-        ${isStmt?'':`<button class="btn-sm" onclick="quoteToStatement('${k}')">명세서로</button>`}
-        <button class="btn-sm btn-danger" onclick="delDoc('${k}')">삭제</button>
-      </div>
-    </div>`;
-  }).join('')+(entries.length>_docsLimit?`<button class="btn-sm" style="width:100%;margin-top:10px;padding:12px" onclick="_docsLimit+=30;renderDocs()">더 보기 (${entries.length-_docsLimit}건 남음)</button>`:'');
+    const left=_docExpLeft(v);
+    if(left!==null){if(left<0&&left>=-30)expPill=pill('#eee','#777','만료됨');else if(left>=0&&left<=5)expPill=pill('#fff3cd','#8a6200','⏳ 만료 '+left+'일 전');}
+    const its=v.items||[];const it0=its[0]||{};
+    const itemTxt=its.length?((it0.name||'')+(it0.spec?' '+it0.spec:'')+(its.length>1?' 외 '+(its.length-1)+'건':'')):'';
+    const total=tot(v);
+    return '<div class="doc-card"><div class="doc-info">'
+      +'<div class="dc-badges">'+badge+expPill+sentPill+smsPill+readBadge+waitBadge+grpBadge+'</div>'
+      +'<div class="dc-company">'+esc(v.company||v.fileName||v.docNo||'거래처')+'</div>'
+      +(itemTxt?'<div class="dc-item">'+esc(itemTxt)+'</div>':'')
+      +(total>0?'<div class="dc-amt">'+_dcWon(total)+'<small>'+(v.optVat===false?'VAT 별도':'VAT 포함')+'</small></div>':'')
+      +'<div class="doc-meta-text">'+(v.date||'')+' | 담당: '+(v.manager||'-')+' | 저장: '+fmtDt(v.savedAt)+(v.docNo?' | '+esc(v.docNo):'')+'</div>'
+      +'</div><div class="doc-actions">'
+      +'<button class="btn-sm btn-primary" onclick="loadDoc(\''+k+'\')">불러오기</button>'
+      +'<button class="btn-sm" onclick="cloneDoc(\''+k+'\')">복제</button>'
+      +(isStmt?'':'<button class="btn-sm" onclick="quoteToStatement(\''+k+'\')">명세서로</button>')
+      +'<button class="btn-sm btn-danger" onclick="delDoc(\''+k+'\')">삭제</button>'
+      +'</div></div>';
+  }).join('')+(entries.length>_docsLimit?'<button class="btn-sm" style="width:100%;margin-top:10px;padding:12px" onclick="_docsLimit+=30;renderDocs()">더 보기 ('+(entries.length-_docsLimit)+'건 남음)</button>':'');
   const trackIds=entries.map(([k,v])=>v.trackId).filter(Boolean);
   if(trackIds.length){
     fetchReadStatuses(trackIds).then(changed=>{ if(changed) renderDocs(); });
