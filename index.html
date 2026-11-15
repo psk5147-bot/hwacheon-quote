@@ -522,6 +522,20 @@ table.item-table tbody tr:hover{background:#fafaf7}
 .doc-card .doc-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px;padding-top:12px;border-top:1px solid #eef1f6;justify-content:stretch;width:100%}
 .doc-card .doc-actions .btn-sm{min-height:40px;border-radius:10px;font-size:13px}
 @media(max-width:640px){#panel-docs{padding:14px 12px}.dc-hero{padding:18px}.dc-hero-n{font-size:26px}.dc-hero-r{width:100%}.dc-kpi{flex:1}.doc-list{grid-template-columns:1fr}}
+
+/* ===== 거래처 관리 개편 ===== */
+#panel-customers{max-width:1100px;margin:0 auto;padding:18px 16px}
+#panel-customers #cust-search-main{border-radius:999px!important;padding:10px 16px!important;border-color:#d5dcea!important;min-height:42px}
+#panel-customers .btn-sm{border-radius:999px;min-height:42px}
+.customer-list{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.cust-card{border:1px solid #e3e8f2;border-radius:18px;padding:16px 18px;box-shadow:0 2px 10px rgba(15,40,90,.05);min-width:0}
+.cust-card .cust-name{font-size:17px;font-weight:700;color:#1a2540;letter-spacing:-.4px;margin-bottom:8px;overflow-wrap:anywhere}
+.cust-stat{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:#51607a;background:#f3f6fc;border-radius:12px;padding:9px 12px;margin-bottom:10px}
+.cust-stat b{color:#0b3d91}.cust-stat .none{color:#98a4b8}
+.cust-card .cust-detail{font-size:12px;color:#7b88a0;line-height:1.7}
+.cust-card .cust-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid #eef1f6}
+.cust-card .cust-actions .btn-sm{min-height:40px;border-radius:10px;font-size:13px}
+@media(max-width:640px){#panel-customers{padding:14px 12px}.customer-list{grid-template-columns:1fr}}
 </style>
 <link rel="manifest" href="#" id="manifest-link">
 <meta name="mobile-web-app-capable" content="yes">
@@ -915,6 +929,7 @@ if('serviceWorker' in navigator){
 
 <!-- 거래처 관리 -->
 <div id="panel-customers" class="tab-panel">
+  <div id="cust-summary"></div>
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
     <button class="btn-sm btn-primary" onclick="openSaveCust()">＋ 거래처 추가</button>
     <input type="text" id="cust-search-main" placeholder="🔍 거래처 검색" oninput="renderCustomers()" style="border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-family:var(--font);font-size:13px;flex:1;min-width:120px">
@@ -2215,12 +2230,35 @@ function applyCust(id){
   closeModal('modal-load-cust');
 }
 let _custLimit=30,_custSig='';
+let _custSort='name',_custDocsReq=false;
+function setCustSort(s){_custSort=s;_custLimit=30;renderCustomers();}
 function renderCustomers(){
+  if(!_custDocsReq&&!Object.keys(getDocs2()).length){_custDocsReq=true;loadFirestoreDocs().then(()=>renderCustomers());}
   const q=(document.getElementById('cust-search-main')?.value||'').toLowerCase();
   let custs=getCusts();
   if(q!==_custSig){_custSig=q;_custLimit=30;}
   if(q) custs=custs.filter(c=>(c.company||'').toLowerCase().includes(q)||(c.person||'').toLowerCase().includes(q)||(c.tel||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.email||'').toLowerCase().includes(q));
-  custs.sort((a,b)=>(a.company||'').localeCompare(b.company||'','ko'));
+  /* 거래처별 문서 통계 (거래처명이 같은 문서 기준) */
+  const stat={};
+  const tot=v=>{try{return calcDocTotal(v).total||0;}catch(e){return 0;}};
+  Object.values(getDocs2()).forEach(v=>{
+    const k=(v.company||'').trim(); if(!k)return;
+    const s=stat[k]||(stat[k]={q:0,st:0,amt:0,last:''});
+    if(v.docType==='statement'){s.st++;}else{s.q++;s.amt+=tot(v);}
+    const d=v.date||''; if(d>s.last)s.last=d;
+  });
+  const st=c=>stat[(c.company||'').trim()]||{q:0,st:0,amt:0,last:''};
+  if(_custSort==='recent') custs.sort((a,b)=>(st(b).last>st(a).last?1:st(b).last<st(a).last?-1:0)||(a.company||'').localeCompare(b.company||'','ko'));
+  else if(_custSort==='amt') custs.sort((a,b)=>st(b).amt-st(a).amt||(a.company||'').localeCompare(b.company||'','ko'));
+  else custs.sort((a,b)=>(a.company||'').localeCompare(b.company||'','ko'));
+  const all=getCusts();
+  const active=all.filter(c=>st(c).q>0).length;
+  const sumAmt=all.reduce((s,c)=>s+st(c).amt,0);
+  const topC=all.slice().sort((a,b)=>st(b).amt-st(a).amt)[0];
+  const sumEl=document.getElementById('cust-summary');
+  if(sumEl) sumEl.innerHTML='<div class="dc-hero"><div><div class="dc-hero-l">등록된 거래처</div><div class="dc-hero-n">'+all.length+'곳</div><div class="dc-hero-s"><span>견적 이력 있음 <b>'+active+'곳</b></span><span>견적 합계 <b>'+_dcK(sumAmt)+'원</b></span></div></div>'
+    +'<div class="dc-hero-r">'+(topC&&st(topC).amt>0?'<div class="dc-kpi"><span>견적 금액 1위</span><b>'+esc(topC.company)+'</b></div>':'')+'</div></div>'
+    +'<div class="dc-sort">'+[['name','이름순'],['recent','최근 거래순'],['amt','견적금액순']].map(a=>'<button class="'+(_custSort===a[0]?'on':'')+'" onclick="setCustSort(\''+a[0]+'\')">'+a[1]+'</button>').join('')+'</div>';
   const list=document.getElementById('customer-list');
   if(!custs.length){list.innerHTML='<div class="empty-msg">저장된 거래처가 없습니다.</div>';return;}
 
@@ -2237,17 +2275,15 @@ function renderCustomers(){
   list.innerHTML=custs.slice(0,_custLimit).map(c=>{
     const key=(c.company||'').trim()+'||'+(c.person||'').trim();
     const isDup=dupKeys.has(key);
-    return `<div class="cust-card" style="${isDup?'border-color:#ffc107;background:#fffdf0':''}">
-      ${isDup?'<div style="font-size:11px;color:#856404;font-weight:700;margin-bottom:4px">⚠️ 중복</div>':''}
-      <div class="cust-name">${c.company}</div>
-      <div class="cust-detail">${c.person?`담당: ${c.person}<br>`:''}${c.tel?`TEL: ${c.tel}<br>`:''}${c.email?`Email: ${c.email}<br>`:''}</div>
-      <div class="cust-actions">
-        <button class="btn-sm btn-primary" onclick="applyCustSwitch(${c.id})">적용</button>
-        <button class="btn-sm" onclick="viewCustDocs(${c.id})">견적 이력</button>
-        <button class="btn-sm btn-danger" onclick="delCust(${c.id})">삭제</button>
-      </div>
-    </div>`;
-  }).join('')+(_total>_custLimit?`<button class="btn-sm" style="width:100%;margin-top:10px;padding:12px" onclick="_custLimit+=30;renderCustomers()">더 보기 (${_total-_custLimit}곳 남음)</button>`:'');
+    const s=st(c);
+    return '<div class="cust-card" style="'+(isDup?'border-color:#ffc107;background:#fffdf0':'')+'">'
+      +(isDup?'<div style="font-size:11px;color:#856404;font-weight:700;margin-bottom:4px">⚠️ 중복</div>':'')
+      +'<div class="cust-name">'+esc(c.company||'')+'</div>'
+      +'<div class="cust-stat">'+(s.q||s.st?'<span><b>견적 '+s.q+'건</b></span>'+(s.st?'<span>명세서 '+s.st+'건</span>':'')+(s.amt?'<span>견적 합계 <b>'+_dcK(s.amt)+'원</b></span>':'')+(s.last?'<span>최근 '+esc(s.last)+'</span>':''):'<span class="none">견적 이력 없음</span>')+'</div>'
+      +'<div class="cust-detail">'+(c.person?'담당: '+esc(c.person)+'<br>':'')+(c.tel?'TEL: '+esc(c.tel)+'<br>':'')+(c.email?'Email: '+esc(c.email)+'<br>':'')+'</div>'
+      +'<div class="cust-actions"><button class="btn-sm btn-primary" onclick="applyCustSwitch('+c.id+')">적용</button><button class="btn-sm" onclick="viewCustDocs('+c.id+')">견적 이력</button><button class="btn-sm btn-danger" onclick="delCust('+c.id+')">삭제</button></div>'
+      +'</div>';
+  }).join('')+(_total>_custLimit?'<button class="btn-sm" style="width:100%;margin-top:10px;padding:12px;grid-column:1/-1" onclick="_custLimit+=30;renderCustomers()">더 보기 ('+(_total-_custLimit)+'곳 남음)</button>':'');
 }
 
 function findDupCusts(){
