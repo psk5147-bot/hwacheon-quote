@@ -3148,5 +3148,212 @@ function fmtDt(s){if(!s)return'';const d=new Date(s);return`${d.getMonth()+1}/${
 function p2(n){return String(n).padStart(2,'0');}
 </script>
 </div><!-- /main-app -->
+<!-- ===== 수신처 자동입력 (명함·사업자등록증 사진 → AI 인식) 2026-11-16 ===== -->
+<style>
+.rx-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:#f3f6fc;border:1px solid #e3e8f2;border-radius:14px}
+.rx-btn{height:40px;padding:0 16px;border-radius:12px;border:1px solid #0b3d91;background:#0b3d91;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.rx-btn.ghost{background:#fff;color:#0b3d91}
+.rx-btn:disabled{opacity:.5;cursor:default}
+.rx-hint{font-size:12px;color:#51607a;line-height:1.5;flex:1;min-width:180px}
+dialog.rx-dlg{position:fixed;inset:0;margin:auto;border:0;padding:0;border-radius:20px;width:min(900px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:#fff;color:#1a2540;box-shadow:0 12px 56px rgba(15,37,77,.28);overflow:auto;font-family:'Noto Sans KR',sans-serif}
+dialog.rx-dlg::backdrop{background:rgba(16,27,44,.55)}
+.rx-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px 8px}
+.rx-head h2{font-size:18px;color:#0b2e6f;letter-spacing:-.5px;margin:0}
+.rx-head p{font-size:12px;color:#51607a;margin:4px 0 0;line-height:1.5}
+.rx-x{width:36px;height:36px;border-radius:50%;border:1px solid #d5dcea;background:#fff;color:#51607a;font-size:20px;cursor:pointer;line-height:1}
+.rx-body{padding:8px 20px 20px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px}
+.rx-orig{border:1px solid #e3e8f2;border-radius:14px;background:#eef1f6;padding:8px;align-self:start;position:sticky;top:0}
+.rx-orig img{width:100%;max-height:60dvh;object-fit:contain;display:block;border-radius:10px;background:#fff}
+.rx-msg{grid-column:1/-1;font-size:13px;color:#51607a;padding:10px 12px;background:#f3f6fc;border-radius:12px}
+.rx-msg[data-k=error]{background:#fdecea;color:#b3261e}
+.rx-msg[data-k=ok]{background:#e6f4ec;color:#168a58}
+.rx-field{border:1px solid #e3e8f2;border-radius:14px;padding:10px 12px;margin-bottom:10px}
+.rx-field.unc{border-color:#f0c36a;background:#fffaf0}
+.rx-field label.rx-lab{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#51607a;margin-bottom:6px}
+.rx-field input[type=text]{width:100%;height:40px;border:1px solid #d5dcea;border-radius:10px;padding:0 12px;font-size:14px;font-family:inherit;color:#1a2540;box-sizing:border-box}
+.rx-flag{font-size:11px;color:#a86a00;font-weight:700;margin-left:auto}
+.rx-alt{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rx-alt button{height:30px;padding:0 10px;border-radius:999px;border:1px solid #d5dcea;background:#fff;color:#51607a;font-size:12px;cursor:pointer;font-family:inherit}
+.rx-foot{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.rx-login{width:min(420px,calc(100vw - 24px))}
+.rx-login form{padding:8px 20px 20px;display:block}
+.rx-login input{width:100%;height:44px;border:1px solid #d5dcea;border-radius:12px;padding:0 14px;font-size:14px;margin-bottom:10px;box-sizing:border-box;font-family:inherit}
+.rx-login .rx-note{font-size:12px;color:#51607a;line-height:1.6;margin:0 0 12px}
+@media(max-width:640px){.rx-body{grid-template-columns:minmax(0,1fr)}.rx-orig{position:static}.rx-orig img{max-height:30dvh}.rx-btn{flex:1}}
+</style>
+<input type="file" id="rx-file" accept="image/*" style="display:none">
+<dialog id="rx-review" class="rx-dlg">
+  <div class="rx-head"><div><h2 id="rx-title">수신처 자동 입력 확인</h2><p>원본 사진과 인식 결과를 비교하고, 필요한 항목만 체크해서 적용하세요. 틀린 글자는 여기서 고칠 수 있습니다.</p></div><button type="button" class="rx-x" id="rx-close" aria-label="닫기">×</button></div>
+  <div class="rx-body">
+    <div class="rx-msg" id="rx-msg">사진을 준비하고 있습니다…</div>
+    <div class="rx-orig"><img id="rx-img" alt="선택한 사진"></div>
+    <div id="rx-fields"></div>
+    <div class="rx-foot"><button type="button" class="rx-btn ghost" id="rx-retry">다시 읽기</button><button type="button" class="rx-btn" id="rx-apply" disabled>선택한 항목 적용</button></div>
+  </div>
+</dialog>
+<dialog id="rx-login" class="rx-dlg rx-login">
+  <div class="rx-head"><div><h2>AI 기능 계정 연결</h2></div><button type="button" class="rx-x" id="rx-login-close" aria-label="닫기">×</button></div>
+  <form id="rx-login-form"><p class="rx-note">사진 인식에만 기존 대표·문과장 재고 앱 계정을 처음 한 번 연결합니다. 연결은 이 기기에 유지되고, 계약서 앱에서 이미 연결했다면 자동으로 이어집니다.</p><input type="email" id="rx-email" autocomplete="username" required placeholder="대표 또는 문과장 이메일"><input type="password" id="rx-pw" autocomplete="current-password" required placeholder="비밀번호"><div id="rx-login-err" style="font-size:12px;color:#b3261e;min-height:18px;margin-bottom:8px"></div><button class="rx-btn" id="rx-login-submit" style="width:100%;height:44px">연결하고 계속</button></form>
+</dialog>
+<script type="module">
+const ENDPOINT='https://chatbot-tawny-six-65.vercel.app/api/receiver-extract';
+const ALLOWED=['mohoro@naver.com','mixfactorydj@gmail.com'];
+const $=id=>document.getElementById(id);
+const dlg=$('rx-review'),loginDlg=$('rx-login');
+let target='q',authP=null,imageData=null,imageUrl=null,gen=0,busy=false,ctrl=null,resumeAfter=false,lastResult=null;
+// 입력칸 매핑 (견적서 q / 거래명세서 s)
+const T={
+ q:{company:'c-company',person:'c-person',tel:'c-tel',addr:'c-addr',setEmail:v=>window.setEmail(v),getEmail:()=>window.getEmail()},
+ s:{company:'sc-company',person:'sc-person',tel:'sc-tel',addr:null,setEmail:v=>window.setSEmail(v),getEmail:()=>window.getSEmail()}
+};
+const LABELS={company:'거래처명',person:'담당자',tel:'연락처',email:'이메일',addr:'주소'};
+function setStatus(t,k=''){const m=$('rx-msg');m.textContent=t;m.dataset.k=k;}
+function setBusy(v){busy=v;$('rx-retry').disabled=v;if(v)$('rx-apply').disabled=true;}
+async function authClient(){
+ if(authP)return authP;
+ authP=(async()=>{
+  const [{initializeApp,getApps},f]=await Promise.all([import('https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js')]);
+  const name='contract-ai-auth';
+  const app=getApps().find(a=>a.name===name)||initializeApp({apiKey:'AIzaSyB-wYELUMAs85APk_P4wRIpX216Tw50-2U',authDomain:'parts-inventory-71606.firebaseapp.com',projectId:'parts-inventory-71606',appId:'1:216547721139:web:c99ed4ea1c66be198515c6'},name);
+  const auth=f.getAuth(app);
+  try{await f.setPersistence(auth,f.browserLocalPersistence);}catch{await f.setPersistence(auth,f.inMemoryPersistence);}
+  await new Promise(r=>{const u=f.onAuthStateChanged(auth,()=>{u();r();},()=>r());});
+  return {auth,f};
+ })().catch(e=>{authP=null;throw e;});
+ return authP;
+}
+async function enabled(){
+ const r=await fetch(ENDPOINT,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(12000)});
+ if(!r.ok)throw new Error('AI 연결 서버에 접속하지 못했습니다. 입력 내용은 그대로 유지됩니다.');
+ const v=await r.json();
+ if(!v.enabled)throw new Error('AI 인식이 아직 활성화되지 않았습니다. 직접 입력해 주세요.');
+}
+async function connect(resume){
+ resumeAfter=resume;$('rx-login-err').textContent='';$('rx-pw').value='';
+ loginDlg.showModal();
+ try{const a=await authClient();if(a.auth.currentUser?.email)$('rx-email').value=a.auth.currentUser.email;}catch{$('rx-login-err').textContent='계정 연결 도구를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';}
+}
+$('rx-login-form').addEventListener('submit',async e=>{
+ e.preventDefault();const btn=$('rx-login-submit');btn.disabled=true;
+ try{
+  const email=$('rx-email').value.trim().toLowerCase();
+  if(!ALLOWED.includes(email))throw new Error('대표 또는 문과장의 기존 재고 앱 계정으로 연결해 주세요.');
+  const a=await authClient();await a.f.signInWithEmailAndPassword(a.auth,email,$('rx-pw').value);
+  const r=resumeAfter;resumeAfter=false;loginDlg.close();
+  if(r&&dlg.open&&imageData)await analyze();
+ }catch(err){$('rx-login-err').textContent=err.code?'이메일·비밀번호를 확인해 주세요.':err.message;}
+ finally{$('rx-pw').value='';btn.disabled=false;}
+});
+$('rx-login-close').addEventListener('click',()=>loginDlg.close());
+loginDlg.addEventListener('close',()=>{$('rx-pw').value='';resumeAfter=false;});
+async function prepare(file){
+ if(!file||!/^image\//.test(file.type)||file.size>30*1024*1024)throw new Error('30MB 이하의 사진을 선택해 주세요.');
+ const src=URL.createObjectURL(file);
+ try{
+  const img=new Image();img.src=src;await img.decode();
+  if(!img.naturalWidth)throw new Error('사진을 읽을 수 없습니다.');
+  const ratio=Math.min(1,2200/Math.max(img.naturalWidth,img.naturalHeight),Math.sqrt(3200000/(img.naturalWidth*img.naturalHeight)));
+  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*ratio));c.height=Math.max(1,Math.round(img.naturalHeight*ratio));
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);
+  let blob;for(const q of [.9,.82,.72,.6]){blob=await new Promise(r=>c.toBlob(r,'image/jpeg',q));if(blob&&blob.size<=2*1024*1024)break;}
+  if(!blob||blob.size>2*1024*1024)throw new Error('사진 크기를 줄이지 못했습니다. 명함·등록증 부분만 잘라 선택해 주세요.');
+  const data=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('사진을 읽지 못했습니다.'));r.readAsDataURL(blob);});
+  return {data,blob};
+ }finally{URL.revokeObjectURL(src);}
+}
+function curVal(k){const t=T[target];if(k==='email')return t.getEmail();const id=t[k];return id?($(id)?.value||'').trim():'';}
+function renderFields(res){
+ lastResult=res;const f=res.fields||{};const unc=new Set(res.uncertainFields||[]);
+ const isReg=res.documentType==='business_registration';
+ $('rx-title').textContent=isReg?'사업자등록증 → 수신처 입력 확인':'명함 → 수신처 입력 확인';
+ const rows=[];
+ rows.push({k:'company',v:f.company||'',u:unc.has('company')||!f.company});
+ let person=f.person?(f.person+(f.title?' '+f.title:'')):'';
+ let personNote='';
+ if(!person&&isReg&&f.representative){person=f.representative;personNote='사업자등록증에는 담당자가 없어 대표자 이름을 넣었습니다. 담당자가 따로 있으면 고쳐 주세요.';}
+ rows.push({k:'person',v:person,u:unc.has('person')||unc.has('title')||!person,note:personNote,off:!!personNote&&!!curVal('person')});
+ const tel=f.mobile||f.tel||'';
+ const alts=[];if(f.mobile)alts.push(['휴대폰 '+f.mobile,f.mobile]);if(f.tel)alts.push(['전화 '+f.tel,f.tel]);
+ rows.push({k:'tel',v:tel,u:(f.mobile?unc.has('mobile'):unc.has('tel'))||!tel,alts:alts.length>1?alts:null});
+ rows.push({k:'email',v:f.email||'',u:unc.has('email')||!f.email});
+ if(T[target].addr&&f.address)rows.push({k:'addr',v:f.address,u:unc.has('address')});
+ const box=$('rx-fields');box.replaceChildren();
+ for(const r of rows){
+  const d=document.createElement('div');d.className='rx-field'+(r.u?' unc':'');d.dataset.k=r.k;
+  const lab=document.createElement('label');lab.className='rx-lab';
+  const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!r.v&&!r.off;cb.dataset.use=r.k;
+  lab.append(cb,document.createTextNode(LABELS[r.k]));
+  if(r.u){const fl=document.createElement('span');fl.className='rx-flag';fl.textContent=r.v?'원본 확인 필요':'읽지 못함';lab.append(fl);}
+  const inp=document.createElement('input');inp.type='text';inp.value=r.v;inp.dataset.val=r.k;inp.addEventListener('input',()=>{cb.checked=!!inp.value.trim();});
+  d.append(lab,inp);
+  if(r.note){const n=document.createElement('div');n.style.cssText='font-size:11px;color:#8a97ad;margin-top:6px';n.textContent=r.note;d.append(n);}
+  if(r.alts){const a=document.createElement('div');a.className='rx-alt';for(const [t,v] of r.alts){const b=document.createElement('button');b.type='button';b.textContent=t;b.addEventListener('click',()=>{inp.value=v;cb.checked=true;});a.append(b);}d.append(a);}
+  box.append(d);
+ }
+ if(Array.isArray(res.warnings)&&res.warnings.length){const w=document.createElement('div');w.style.cssText='font-size:12px;color:#a86a00;line-height:1.6';w.textContent=res.warnings.slice(0,5).join(' / ');box.append(w);}
+}
+async function analyze(){
+ if(busy||!imageData)return;const turn=gen;setBusy(true);
+ let rc=null;
+ try{
+  setStatus('AI 연결을 확인하고 있습니다…');
+  await enabled();if(turn!==gen||!dlg.open)return;
+  const a=await authClient();
+  if(!a.auth.currentUser){setBusy(false);await connect(true);return;}
+  const token=await a.auth.currentUser.getIdToken();if(turn!==gen||!dlg.open)return;
+  rc=new AbortController();ctrl=rc;const timer=setTimeout(()=>rc.abort(),60000);
+  setStatus('사진에서 수신처 정보를 읽고 있습니다. 확인 전에는 입력칸을 바꾸지 않습니다.');
+  let resp;try{resp=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({image:imageData,mediaType:'image/jpeg',requestId:crypto.randomUUID()}),signal:rc.signal});}finally{clearTimeout(timer);}
+  const res=await resp.json();if(turn!==gen||!dlg.open)return;
+  if(!resp.ok){if(resp.status===401){setBusy(false);await connect(true);return;}throw new Error(res.error||'인식하지 못했습니다. 직접 입력해 주세요.');}
+  if(!res.fields||typeof res.fields!=='object')throw new Error('인식 결과 형식이 올바르지 않습니다.');
+  renderFields(res);
+  setStatus('원본과 비교한 뒤 적용해 주세요. 노란 칸은 원본과 꼭 대조하세요.','ok');
+  $('rx-apply').disabled=false;
+ }catch(e){if(turn===gen&&dlg.open)setStatus(e.name==='AbortError'?'응답을 받지 못했습니다. 입력값은 바뀌지 않았고 자동 재시도하지 않았습니다.':e.message,'error');}
+ finally{if(turn===gen){busy=false;$('rx-retry').disabled=false;}if(ctrl===rc)ctrl=null;}
+}
+async function pick(file){
+ const turn=++gen;ctrl?.abort();imageData=null;if(imageUrl){URL.revokeObjectURL(imageUrl);imageUrl=null;}
+ $('rx-fields').replaceChildren();$('rx-apply').disabled=true;
+ if(!dlg.open)dlg.showModal();setBusy(true);setStatus('사진을 준비하고 있습니다…');
+ try{
+  const p=await prepare(file);if(turn!==gen||!dlg.open)return;
+  imageData=p.data;imageUrl=URL.createObjectURL(p.blob);$('rx-img').src=imageUrl;setBusy(false);await analyze();
+ }catch(e){if(turn!==gen)return;setBusy(false);setStatus(e.message||'사진을 읽지 못했습니다. JPG 또는 PNG 사진을 선택해 주세요.','error');}
+}
+$('rx-file').addEventListener('change',e=>{const f=e.target.files?.[0];e.target.value='';if(f)pick(f);});
+$('rx-retry').addEventListener('click',analyze);
+$('rx-close').addEventListener('click',()=>dlg.close());
+dlg.addEventListener('close',()=>{gen++;ctrl?.abort();ctrl=null;imageData=null;if(imageUrl){URL.revokeObjectURL(imageUrl);imageUrl=null;}$('rx-img').removeAttribute('src');busy=false;$('rx-apply').disabled=true;if(loginDlg.open)loginDlg.close();});
+$('rx-apply').addEventListener('click',()=>{
+ if(busy)return;const t=T[target];
+ const ups=[...$('rx-fields').querySelectorAll('input[data-use]')].filter(c=>c.checked).map(c=>c.dataset.use).map(k=>({k,v:$('rx-fields').querySelector('input[data-val="'+k+'"]').value.trim()})).filter(x=>x.v);
+ if(!ups.length){setStatus('입력할 항목을 하나 이상 체크해 주세요.','error');return;}
+ if(ups.some(x=>/[<>\u0000-\u001f]/.test(x.v))){setStatus('입력 내용에 사용할 수 없는 기호가 있습니다.','error');return;}
+ const over=ups.filter(x=>{const c=curVal(x.k);return c&&c!==x.v;});
+ if(over.length&&!confirm(over.map(x=>LABELS[x.k]).join(', ')+'의 기존 값을 바꿀까요?'))return;
+ for(const {k,v} of ups){
+  if(k==='email'){t.setEmail(v);continue;}
+  const el=$(t[k]);if(!el)continue;el.value=v;
+ }
+ // 입력 이벤트를 보내면 연락처가 자동 하이픈 규칙(3-4-4)으로 바뀌어 일반전화가 깨지므로, 값만 넣고 자동저장만 호출
+ try{if(typeof window.sched==='function')window.sched();}catch(e){}
+ dlg.close();
+ const m=document.getElementById('rx-done');if(m)m.remove();
+ const tip=document.createElement('div');tip.id='rx-done';tip.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0b2e6f;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:9999';tip.textContent=ups.length+'개 항목을 입력했습니다. 아직 저장되지 않았습니다.';document.body.append(tip);setTimeout(()=>tip.remove(),3500);
+});
+// 버튼 삽입: 견적서 수신처, 거래명세서 거래처 정보
+function addRow(anchorId,key){
+ const a=$(anchorId);const body=a?.closest('.card-body');if(!body||body.querySelector('.rx-row'))return;
+ const row=document.createElement('div');row.className='rx-row';
+ const btn=document.createElement('button');btn.type='button';btn.className='rx-btn';btn.textContent='📷 명함·사업자등록증으로 입력';
+ const hint=document.createElement('div');hint.className='rx-hint';hint.textContent='사진을 올리면 거래처명·담당자·연락처·이메일을 읽어서 채워 드려요. 확인 후 적용됩니다.';
+ btn.addEventListener('click',()=>{target=key;$('rx-file').click();});
+ row.append(btn,hint);body.prepend(row);
+}
+addRow('c-company','q');addRow('sc-company','s');
+</script>
+
 </body>
 </html>
