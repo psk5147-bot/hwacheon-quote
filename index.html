@@ -2341,7 +2341,7 @@ function renderDocs(){
       +'<div class="dc-company">'+esc(v.company||v.fileName||v.docNo||'거래처')+'</div>'
       +(itemTxt?'<div class="dc-item">'+esc(itemTxt)+'</div>':'')
       +(total>0?'<div class="dc-amt">'+_dcWon(total)+'<small>'+(v.optVat===false?'VAT 별도':'VAT 포함')+'</small></div>':'')
-      +'<div class="doc-meta-text">'+(v.date||'')+' | 담당: '+(v.manager||'-')+' | 저장: '+fmtDt(v.savedAt)+(v.docNo?' | '+esc(v.docNo):'')+'</div>'
+      +'<div class="doc-meta-text">'+(v.date||'')+' | 담당: '+(v.manager||'-')+' | 저장: '+fmtDt(v.savedAt)+(v.docNo?' | <span style="white-space:nowrap">'+esc(v.docNo)+'</span>':'')+'</div>'
       +'</div><div class="doc-actions">'
       +'<button class="btn-sm btn-primary" onclick="loadDoc(\''+k+'\')">불러오기</button>'
       +'<button class="btn-sm" onclick="cloneDoc(\''+k+'\')">복제</button>'
